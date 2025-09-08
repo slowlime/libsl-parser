@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
-    antlr("org.antlr:antlr4:4.11.1")
+    antlr("org.antlr:antlr4:4.13.2")
     implementation("com.google.code.gson:gson:2.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2")
 }
@@ -25,7 +25,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile>() {
+tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
     dependsOn("generateGrammarSource")
 }
@@ -33,7 +33,7 @@ tasks.withType<KotlinCompile>() {
 tasks.generateGrammarSource {
     maxHeapSize = "64m"
     outputDirectory = File("${project.buildDir}/generated-src/antlr/main/org/jetbrains/research/libsl")
-    arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages")
+    arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages", "-package", "${project.group}.libsl")
 }
 
 val sourcesJar by tasks.creating(Jar::class) {
