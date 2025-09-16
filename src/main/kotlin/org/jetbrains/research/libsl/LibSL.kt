@@ -1,5 +1,6 @@
 package org.jetbrains.research.libsl
 
+import org.antlr.v4.runtime.ANTLRErrorListener
 import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.location.CanonicalPath
 import org.jetbrains.research.libsl.file.FileLoader
@@ -9,6 +10,8 @@ import org.jetbrains.research.libsl.location.LoadChain
 import java.nio.file.Path
 
 class LibSL(private val fileLoader: FileLoader) {
+    var syntaxErrorListener: ANTLRErrorListener? = null
+
     internal sealed interface ModuleState {
         val file: LoadedFile
 
@@ -25,7 +28,7 @@ class LibSL(private val fileLoader: FileLoader) {
 
     fun load(path: String): Module {
         val request = requestLoad(path, loadChain = null)
-        processLoads()
+        processLoadRequests()
 
         val state = request.state
         check(state is ModuleState.Loaded)
@@ -43,7 +46,7 @@ class LibSL(private val fileLoader: FileLoader) {
         }
     }
 
-    private fun processLoads() {
+    private fun processLoadRequests() {
         while (requestQueue.isNotEmpty()) {
             val request = requestQueue.removeFirst()
             val state = request.state

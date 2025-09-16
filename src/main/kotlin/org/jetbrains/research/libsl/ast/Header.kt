@@ -1,0 +1,7 @@
+package org.jetbrains.research.libsl.ast
+
+import org.jetbrains.research.libsl.location.Location
+
+data class Header(
+    val location: Location,
+)

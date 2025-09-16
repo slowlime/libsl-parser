@@ -1,4 +1,11 @@
 package org.jetbrains.research.libsl.ast
 
-class Module {
-}
+import org.jetbrains.research.libsl.ast.decl.Decl
+import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.location.LocationProvider
+
+data class Module(
+    override val location: Location?,
+    val header: Header?,
+    val decls: List<Decl>
+) : LocationProvider
