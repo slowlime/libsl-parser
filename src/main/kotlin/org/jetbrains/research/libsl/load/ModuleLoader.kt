@@ -22,6 +22,7 @@ import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.access.Access
 import org.jetbrains.research.libsl.ast.contract.Contract
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
+import org.jetbrains.research.libsl.ast.decl.VariableDecl
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.stmt.Stmt
 import org.jetbrains.research.libsl.ast.type.TypeArg
@@ -96,6 +97,9 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         }
     }
 
+    internal fun processVariableDecl(ctx: LibSLParser.VariableDeclContext): VariableDecl =
+        DeclProcessor(this).process(ctx)
+
     internal fun processTypeExpr(ctx: LibSLParser.TypeExprContext): TypeExpr = TypeExprProcessor(this).run {
         when (ctx) {
             is LibSLParser.TypeExprPrimitiveLitContext -> process(ctx)
@@ -116,7 +120,15 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         }
     }
 
-    internal fun processStmt(ctx: LibSLParser.StmtContext): Stmt = TODO()
+    internal fun processStmt(ctx: LibSLParser.StmtContext): Stmt = StmtProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.StmtVariableDeclContext -> process(ctx)
+            is LibSLParser.StmtIfContext -> process(ctx.ifStmt())
+            is LibSLParser.StmtAssignContext -> process(ctx.assignStmt())
+            is LibSLParser.StmtExprContext -> process(ctx)
+            else -> error("unrecognized stmt $ctx")
+        }
+    }
 
     internal fun processAtomicExpr(ctx: LibSLParser.AtomicExprContext): Expr = TODO()
 

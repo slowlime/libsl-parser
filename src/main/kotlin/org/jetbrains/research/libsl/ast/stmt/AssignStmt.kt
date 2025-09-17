@@ -19,7 +19,7 @@ data class AssignStmt(
         BitAnd,
         BitOr,
         BitXor,
-        Shl,
-        Shr,
+        LShift,
+        RShift,
     }
 }
