@@ -31,7 +31,7 @@ import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.location.LoadChain
 import org.jetbrains.research.libsl.location.Location
 
-internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val loadChain: LoadChain) {
+internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChain: LoadChain) {
     fun load(): Module {
         val stream = CharStreams.fromString(file.contents, file.canonicalPath.path)
         val lexer = LibSLLexer(stream)

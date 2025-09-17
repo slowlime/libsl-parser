@@ -22,12 +22,16 @@ import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.StructMemberDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
+import org.jetbrains.research.libsl.location.LoadChain
 
 internal class DeclProcessor(private val loader: ModuleLoader) {
-    fun process(ctx: LibSLParser.ImportDeclContext): ImportDecl = ImportDecl(
-        loader.locationOf(ctx),
-        loader.processPath(ctx.path()),
-    )
+    fun process(ctx: LibSLParser.ImportDeclContext): ImportDecl {
+        val location = loader.locationOf(ctx)
+        val path = loader.processPath(ctx.path())
+        loader.libsl.requestLoad(path, LoadChain.Imported(location))
+
+        return ImportDecl(location, path)
+    }
 
     fun process(ctx: LibSLParser.IncludeDeclContext): IncludeDecl = IncludeDecl(
         loader.locationOf(ctx),
