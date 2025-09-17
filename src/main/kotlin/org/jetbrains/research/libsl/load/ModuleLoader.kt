@@ -16,6 +16,7 @@ import org.jetbrains.research.libsl.ast.IntLit
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.ast.Name
+import org.jetbrains.research.libsl.ast.PrimitiveLit
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.access.Access
@@ -23,6 +24,7 @@ import org.jetbrains.research.libsl.ast.contract.Contract
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.stmt.Stmt
+import org.jetbrains.research.libsl.ast.type.TypeArg
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.location.LoadChain
@@ -77,26 +79,33 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         )
     }
 
-    private fun processGlobalDecl(ctx: LibSLParser.GlobalDeclContext): Iterable<GlobalDecl> {
-        return DeclProcessor(this).run {
-            when (ctx) {
-                is LibSLParser.GlobalDeclImportContext -> listOf(process(ctx.importDecl()))
-                is LibSLParser.GlobalDeclIncludeContext -> listOf(process(ctx.includeDecl()))
-                is LibSLParser.GlobalDeclSemanticTypeSectionContext -> ctx.semanticTypeSectionDecl().decls.map(this::process)
-                is LibSLParser.GlobalDeclTypeAliasContext -> listOf(process(ctx.typeAliasDecl()))
-                is LibSLParser.GlobalDeclStructContext -> listOf(process(ctx.structDecl()))
-                is LibSLParser.GlobalDeclEnumContext -> listOf(process(ctx.enumDecl()))
-                is LibSLParser.GlobalDeclAnnotationContext -> listOf(process(ctx.annotationDecl()))
-                is LibSLParser.GlobalDeclActionContext -> listOf(process(ctx.actionDecl()))
-                is LibSLParser.GlobalDeclAutomatonContext -> listOf(process(ctx.automatonDecl()))
-                is LibSLParser.GlobalDeclFunctionContext -> listOf(process(ctx.functionDecl()))
-                is LibSLParser.GlobalDeclVariableContext -> listOf(process(ctx.variableDecl()))
-                else -> error("unrecognized global decl $ctx")
-            }
+    private fun processGlobalDecl(ctx: LibSLParser.GlobalDeclContext): Iterable<GlobalDecl> = DeclProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.GlobalDeclImportContext -> listOf(process(ctx.importDecl()))
+            is LibSLParser.GlobalDeclIncludeContext -> listOf(process(ctx.includeDecl()))
+            is LibSLParser.GlobalDeclSemanticTypeSectionContext -> ctx.semanticTypeSectionDecl().decls.map(this::process)
+            is LibSLParser.GlobalDeclTypeAliasContext -> listOf(process(ctx.typeAliasDecl()))
+            is LibSLParser.GlobalDeclStructContext -> listOf(process(ctx.structDecl()))
+            is LibSLParser.GlobalDeclEnumContext -> listOf(process(ctx.enumDecl()))
+            is LibSLParser.GlobalDeclAnnotationContext -> listOf(process(ctx.annotationDecl()))
+            is LibSLParser.GlobalDeclActionContext -> listOf(process(ctx.actionDecl()))
+            is LibSLParser.GlobalDeclAutomatonContext -> listOf(process(ctx.automatonDecl()))
+            is LibSLParser.GlobalDeclFunctionContext -> listOf(process(ctx.functionDecl()))
+            is LibSLParser.GlobalDeclVariableContext -> listOf(process(ctx.variableDecl()))
+            else -> error("unrecognized global decl $ctx")
         }
     }
 
-    internal fun processTypeExpr(ctx: LibSLParser.TypeExprContext): TypeExpr = TODO()
+    internal fun processTypeExpr(ctx: LibSLParser.TypeExprContext): TypeExpr = TypeExprProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.TypeExprPrimitiveLitContext -> process(ctx)
+            is LibSLParser.TypeExprNameContext -> process(ctx.nameTypeExpr())
+            is LibSLParser.TypeExprPointerContext -> process(ctx.pointerTypeExpr())
+            is LibSLParser.TypeExprIntersectionContext -> process(ctx)
+            is LibSLParser.TypeExprUnionContext -> process(ctx)
+            else -> error("unrecognized type expr $ctx")
+        }
+    }
 
     internal fun processContract(ctx: LibSLParser.ContractContext): Contract = TODO()
 
@@ -157,6 +166,14 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
     internal fun processWhereClause(ctx: LibSLParser.WhereClauseContext): MutableList<TypeConstraint> = TODO()
 
     internal fun processSignedIntLit(ctx: LibSLParser.SignedIntLitContext): IntLit = TODO()
+
+    internal fun processPrimitiveLit(ctx: LibSLParser.PrimitiveLitContext): PrimitiveLit = TODO()
+
+    internal fun processTypeArg(ctx: LibSLParser.TypeArgContext): TypeArg = when (ctx) {
+        is LibSLParser.TypeArgTypeExprContext -> processTypeExpr(ctx.typeExpr())
+        is LibSLParser.TypeArgWildcardContext -> TypeArg.Wildcard(locationOf(ctx))
+        else -> error("unknown type arg $ctx")
+    }
 }
 
 internal fun Token.parseStringLit(): String {
