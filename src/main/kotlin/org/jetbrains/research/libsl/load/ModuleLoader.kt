@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.Token
+import org.antlr.v4.runtime.tree.TerminalNode
 import org.jetbrains.research.libsl.LibSL
 import org.jetbrains.research.libsl.LibSLLexer
 import org.jetbrains.research.libsl.LibSLParser
@@ -18,6 +19,7 @@ import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.access.Access
+import org.jetbrains.research.libsl.ast.contract.Contract
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.stmt.Stmt
@@ -96,6 +98,8 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
 
     internal fun processTypeExpr(ctx: LibSLParser.TypeExprContext): TypeExpr = TODO()
 
+    internal fun processContract(ctx: LibSLParser.ContractContext): Contract = TODO()
+
     internal fun processStmt(ctx: LibSLParser.StmtContext): Stmt = TODO()
 
     internal fun processAtomicExpr(ctx: LibSLParser.AtomicExprContext): Expr = TODO()
@@ -125,6 +129,8 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
             )
         },
     )
+
+    internal fun processName(name: TerminalNode): Name = processName(name.symbol)
 
     internal fun processName(name: Token): Name {
         require(name.type == LibSLLexer.Identifier)
@@ -176,3 +182,6 @@ internal fun <T> MutableList<T>?.orEmptyMutable(): MutableList<T> = this ?: muta
 
 internal fun <T, R> List<T>?.mapToMutable(transform: (T) -> R): MutableList<R> =
     this?.asSequence()?.map(transform)?.toMutableList().orEmptyMutable()
+
+internal fun <T, R> List<T>?.flatMapToMutable(transform: (T) -> Iterable<R>): MutableList<R> =
+    this?.asSequence()?.flatMap(transform)?.toMutableList().orEmptyMutable()

@@ -3,15 +3,21 @@ package org.jetbrains.research.libsl.load
 import org.jetbrains.research.libsl.LibSLParser
 import org.jetbrains.research.libsl.ast.FunctionBody
 import org.jetbrains.research.libsl.ast.FunctionParam
+import org.jetbrains.research.libsl.ast.FunctionSignature
 import org.jetbrains.research.libsl.ast.decl.ActionDecl
 import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonMemberDecl
+import org.jetbrains.research.libsl.ast.decl.ConstructorDecl
+import org.jetbrains.research.libsl.ast.decl.DestructorDecl
 import org.jetbrains.research.libsl.ast.decl.EnumDecl
 import org.jetbrains.research.libsl.ast.decl.FunctionDecl
 import org.jetbrains.research.libsl.ast.decl.ImportDecl
 import org.jetbrains.research.libsl.ast.decl.IncludeDecl
+import org.jetbrains.research.libsl.ast.decl.ProcDecl
 import org.jetbrains.research.libsl.ast.decl.SemanticTypeDecl
+import org.jetbrains.research.libsl.ast.decl.ShiftDecl
+import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.StructMemberDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
@@ -120,7 +126,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         ctx.constructorVariables?.variables.mapToMutable(::processConstructorVariable),
         loader.processTypeExpr(ctx.type),
         ctx.implements_?.concepts.mapToMutable(loader::processName),
-        ctx.decls.mapToMutable(::processAutomatonMemberDecl),
+        ctx.decls.flatMapToMutable(::processAutomatonMemberDecl),
     )
 
     fun process(ctx: LibSLParser.FunctionDeclContext): FunctionDecl = FunctionDecl(
@@ -145,13 +151,120 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         ctx.init?.let(loader::processExpr),
     )
 
-    private fun processStructMemberDecl(ctx: LibSLParser.StructDefDeclContext): StructMemberDecl = TODO()
+    fun process(ctx: LibSLParser.StateDeclContext): List<StateDecl> = ctx.names.names.map { name ->
+        StateDecl(
+            loader.locationOf(ctx),
+            when (ctx.kind) {
+                is LibSLParser.StateKindInitialContext -> StateDecl.Kind.Initial
+                is LibSLParser.StateKindRegularContext -> StateDecl.Kind.Regular
+                is LibSLParser.StateKindFinalContext -> StateDecl.Kind.Final
+                else -> error("unknown state kind $ctx")
+            },
+            loader.processName(name),
+        )
+    }
 
-    private fun processConstructorVariable(ctx: LibSLParser.ConstructorVariableContext): VariableDecl = TODO()
+    fun process(ctx: LibSLParser.ShiftDeclContext): ShiftDecl = ShiftDecl(
+        loader.locationOf(ctx),
+        when (val from = ctx.from) {
+            is LibSLParser.ShiftSourceStateShorthandContext -> mutableListOf(loader.processName(from.Identifier()))
+            is LibSLParser.ShiftSourceStateListContext -> from.states?.names.mapToMutable(loader::processName)
+            else -> error("unknown shift source state $ctx")
+        },
+        loader.processName(ctx.to),
+        when (val by = ctx.by) {
+            is LibSLParser.ShiftByShorthandContext -> mutableListOf(processFunctionSignature(by.signature))
+            is LibSLParser.ShiftByListContext -> by.signatures?.signatures.mapToMutable(::processFunctionSignature)
+            else -> error("unknown shift edge $ctx")
+        },
+    )
 
-    private fun processAutomatonMemberDecl(ctx: LibSLParser.AutomatonDefDeclContext): AutomatonMemberDecl = TODO()
+    fun process(ctx: LibSLParser.ConstructorDeclContext): ConstructorDecl = ConstructorDecl(
+        loader.locationOf(ctx),
+        loader.processAnnotations(ctx.annotations),
+        ctx.method != null,
+        loader.processName(ctx.name),
+        ctx.params?.params.mapToMutable(::processFunctionParam),
+        ctx.retType?.let(loader::processTypeExpr),
+        ctx.def?.let(::processFunctionDef),
+    )
 
-    private fun processFunctionParam(ctx: LibSLParser.FunctionParamContext): FunctionParam = TODO()
+    fun process(ctx: LibSLParser.DestructorDeclContext): DestructorDecl = DestructorDecl(
+        loader.locationOf(ctx),
+        loader.processAnnotations(ctx.annotations),
+        ctx.method != null,
+        loader.processName(ctx.name),
+        ctx.params?.params.mapToMutable(::processFunctionParam),
+        ctx.retType?.let(loader::processTypeExpr),
+        ctx.def?.let(::processFunctionDef),
+    )
 
-    private fun processFunctionDef(ctx: LibSLParser.FunctionDefContext): FunctionBody? = TODO()
+    fun process(ctx: LibSLParser.ProcDeclContext): ProcDecl = ProcDecl(
+        loader.locationOf(ctx),
+        loader.processAnnotations(ctx.annotations),
+        ctx.method != null,
+        loader.processName(ctx.name),
+        ctx.typeParams?.let(loader::processGenerics).orEmptyMutable(),
+        ctx.params?.params.mapToMutable(::processFunctionParam),
+        ctx.retType?.let(loader::processTypeExpr),
+        ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
+        ctx.def?.let(::processFunctionDef),
+    )
+
+    private fun processStructMemberDecl(ctx: LibSLParser.StructDefDeclContext): StructMemberDecl = when (ctx) {
+        is LibSLParser.StructDefDeclFunctionContext -> process(ctx.functionDecl())
+        is LibSLParser.StructDefDeclVariableContext -> process(ctx.variableDecl())
+        else -> error("unknown struct member decl $ctx")
+    }
+
+    private fun processConstructorVariable(ctx: LibSLParser.ConstructorVariableContext): VariableDecl = VariableDecl(
+        loader.locationOf(ctx),
+        loader.processAnnotations(ctx.annotations),
+        ctx.kind is LibSLParser.VariableKindVarContext,
+        loader.processTypeExpr(ctx.type),
+        ctx.init?.let(loader::processExpr),
+    )
+
+    private fun processAutomatonMemberDecl(ctx: LibSLParser.AutomatonDefDeclContext): Iterable<AutomatonMemberDecl> =
+        when (ctx) {
+            is LibSLParser.AutomatonDefDeclStateContext -> process(ctx.stateDecl())
+            is LibSLParser.AutomatonDefDeclShiftContext -> listOf(process(ctx.shiftDecl()))
+            is LibSLParser.AutomatonDefDeclConstructorContext -> listOf(process(ctx.constructorDecl()))
+            is LibSLParser.AutomatonDefDeclDestructorContext -> listOf(process(ctx.destructorDecl()))
+            is LibSLParser.AutomatonDefDeclProcContext -> listOf(process(ctx.procDecl()))
+            is LibSLParser.AutomatonDefDeclFunctionContext -> listOf(process(ctx.functionDecl()))
+            is LibSLParser.AutomatonDefDeclVariableContext -> listOf(process(ctx.variableDecl()))
+            else -> error("unknown automaton member decl $ctx")
+        }
+
+    private fun processFunctionParam(ctx: LibSLParser.FunctionParamContext): FunctionParam = FunctionParam(
+        loader.processAnnotations(ctx.annotations),
+        loader.processName(ctx.name),
+        loader.processTypeExpr(ctx.type),
+    )
+
+    private fun processFunctionDef(ctx: LibSLParser.FunctionDefContext): FunctionBody? = when (ctx) {
+        is LibSLParser.FunctionDefSemicolonContext -> null
+        is LibSLParser.FunctionDefBracedContext -> processFunctionBody(ctx.body)
+        else -> error("unknown function def $ctx")
+    }
+
+    private fun processFunctionBody(ctx: LibSLParser.FunctionBodyContext): FunctionBody = FunctionBody(
+        ctx.contracts.mapToMutable(loader::processContract),
+        ctx.stmts.mapToMutable(loader::processStmt),
+    )
+
+    private fun processFunctionSignature(ctx: LibSLParser.FunctionSignatureContext): FunctionSignature = when (ctx) {
+        is LibSLParser.FunctionSignatureShorthandContext -> FunctionSignature(
+            loader.processName(ctx.name),
+            mutableListOf(),
+        )
+
+        is LibSLParser.FunctionSignatureQualifiedContext -> FunctionSignature(
+            loader.processName(ctx.name),
+            ctx.params?.typeExprs.mapToMutable(loader::processTypeExpr),
+        )
+
+        else -> error("unknown function signature $ctx")
+    }
 }
