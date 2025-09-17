@@ -1,7 +1,7 @@
 package org.jetbrains.research.libsl.ast.decl
 
 import org.jetbrains.research.libsl.ast.Annotatable
-import org.jetbrains.research.libsl.ast.Annotation
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.expr.Expr
@@ -14,14 +14,14 @@ sealed class SemanticTypeDecl : GlobalDecl, Annotatable {
 
     data class Simple(
         override val location: Location,
-        override val annotations: MutableList<Annotation>,
+        override val annotations: MutableList<LibSLAnnotation>,
         override val typeName: QualifiedTypeName,
         override val realType: TypeExpr,
     ) : SemanticTypeDecl()
 
     data class Enumerated(
         override val location: Location,
-        override val annotations: MutableList<Annotation>,
+        override val annotations: MutableList<LibSLAnnotation>,
         override val typeName: QualifiedTypeName,
         override val realType: TypeExpr,
         val values: MutableList<Value>,

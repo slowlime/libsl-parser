@@ -4,7 +4,7 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.location.LocationProvider
 
-data class Annotation(
+data class LibSLAnnotation(
     override val location: Location?,
     val name: Name,
     val args: MutableList<Arg>

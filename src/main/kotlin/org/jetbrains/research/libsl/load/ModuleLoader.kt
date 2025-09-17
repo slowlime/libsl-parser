@@ -7,9 +7,21 @@ import org.antlr.v4.runtime.Token
 import org.jetbrains.research.libsl.LibSL
 import org.jetbrains.research.libsl.LibSLLexer
 import org.jetbrains.research.libsl.LibSLParser
+import org.jetbrains.research.libsl.ast.FullName
+import org.jetbrains.research.libsl.ast.FunctionParam
+import org.jetbrains.research.libsl.ast.Generic
 import org.jetbrains.research.libsl.ast.Header
+import org.jetbrains.research.libsl.ast.IntLit
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Module
+import org.jetbrains.research.libsl.ast.Name
+import org.jetbrains.research.libsl.ast.QualifiedTypeName
+import org.jetbrains.research.libsl.ast.TypeConstraint
+import org.jetbrains.research.libsl.ast.access.Access
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
+import org.jetbrains.research.libsl.ast.expr.Expr
+import org.jetbrains.research.libsl.ast.stmt.Stmt
+import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.location.LoadChain
 import org.jetbrains.research.libsl.location.Location
@@ -32,28 +44,16 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         column = ctx.start.charPositionInLine + 1,
     )
 
-    internal fun Token.parseStringLit(): String {
-        require(type == LibSLLexer.StringLit)
-        check(text.startsWith('"') && text.endsWith('"'))
-
-        return text
-            .substring(1, text.length - 1)
-            .replace("\\\"", "'")
-    }
-
-    internal fun Token.parseIdent(): String {
-        require(type == LibSLLexer.Identifier)
-
-        return if (text.startsWith('`') && text.endsWith('`')) {
-            text.substring(1, text.length - 1)
-        } else {
-            text
-        }
-    }
+    internal fun locationOf(token: Token): Location = Location(
+        loadChain,
+        file.canonicalPath,
+        line = token.line,
+        column = token.charPositionInLine + 1,
+    )
 
     private fun processFile(ctx: LibSLParser.FileContext): Module {
         val header = ctx.header()?.let(::processHeader)
-        val decls = ctx.decls.flatMap(::processDecl)
+        val decls = ctx.decls.flatMap(::processGlobalDecl)
 
         return Module(locationOf(ctx), header, decls)
     }
@@ -75,7 +75,7 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         )
     }
 
-    private fun processDecl(ctx: LibSLParser.GlobalDeclContext): Iterable<GlobalDecl> {
+    private fun processGlobalDecl(ctx: LibSLParser.GlobalDeclContext): Iterable<GlobalDecl> {
         return DeclProcessor(this).run {
             when (ctx) {
                 is LibSLParser.GlobalDeclImportContext -> listOf(process(ctx.importDecl()))
@@ -89,8 +89,90 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
                 is LibSLParser.GlobalDeclAutomatonContext -> listOf(process(ctx.automatonDecl()))
                 is LibSLParser.GlobalDeclFunctionContext -> listOf(process(ctx.functionDecl()))
                 is LibSLParser.GlobalDeclVariableContext -> listOf(process(ctx.variableDecl()))
-                else -> error("unknown AST node $ctx")
+                else -> error("unrecognized global decl $ctx")
             }
         }
     }
+
+    internal fun processTypeExpr(ctx: LibSLParser.TypeExprContext): TypeExpr = TODO()
+
+    internal fun processStmt(ctx: LibSLParser.StmtContext): Stmt = TODO()
+
+    internal fun processAtomicExpr(ctx: LibSLParser.AtomicExprContext): Expr = TODO()
+
+    internal fun processExpr(ctx: LibSLParser.ExprContext): Expr = TODO()
+
+    internal fun processAccess(ctx: LibSLParser.AccessContext): Access = TODO()
+
+    internal fun processPath(ctx: LibSLParser.PathContext): String {
+        return when (ctx) {
+            is LibSLParser.PathStringLitContext -> ctx.StringLit().symbol.parseStringLit()
+            is LibSLParser.PathBareContext -> ctx.text
+            else -> error("unrecognized path $ctx")
+        }
+    }
+
+    internal fun processAnnotations(ctxs: List<LibSLParser.AnnotationContext>): MutableList<LibSLAnnotation> =
+        ctxs.mapToMutable(::processAnnotation)
+
+    private fun processAnnotation(ctx: LibSLParser.AnnotationContext): LibSLAnnotation = LibSLAnnotation(
+        locationOf(ctx),
+        processName(ctx.name),
+        ctx.args.args.mapToMutable { arg ->
+            LibSLAnnotation.Arg(
+                arg.name?.let(::processName),
+                processExpr(arg.value),
+            )
+        },
+    )
+
+    internal fun processName(name: Token): Name {
+        require(name.type == LibSLLexer.Identifier)
+
+        return Name(locationOf(name), name.parseIdent())
+    }
+
+    internal fun processQualifiedTypeName(ctx: LibSLParser.QualifiedTypeNameContext): QualifiedTypeName {
+        val typeName = processFullName(ctx.typeName)
+        val generics = ctx.typeParams?.let(::processGenerics) ?: mutableListOf()
+
+        return QualifiedTypeName(typeName, generics)
+    }
+
+    internal fun processFullName(ctx: LibSLParser.FullNameContext): FullName = FullName(
+        ctx.components.mapToMutable(::processName),
+    )
+
+    internal fun processGenerics(ctx: LibSLParser.GenericsContext): MutableList<Generic> =
+        ctx.list?.params.mapToMutable(::processGeneric)
+
+    private fun processGeneric(ctx: LibSLParser.GenericContext): Generic = TODO()
+
+    internal fun processWhereClause(ctx: LibSLParser.WhereClauseContext): MutableList<TypeConstraint> = TODO()
+
+    internal fun processSignedIntLit(ctx: LibSLParser.SignedIntLitContext): IntLit = TODO()
 }
+
+internal fun Token.parseStringLit(): String {
+    require(type == LibSLLexer.StringLit)
+    check(text.startsWith('"') && text.endsWith('"'))
+
+    return text
+        .substring(1, text.length - 1)
+        .replace("\\\"", "'")
+}
+
+internal fun Token.parseIdent(): String {
+    require(type == LibSLLexer.Identifier)
+
+    return if (text.startsWith('`') && text.endsWith('`')) {
+        text.substring(1, text.length - 1)
+    } else {
+        text
+    }
+}
+
+internal fun <T> MutableList<T>?.orEmptyMutable(): MutableList<T> = this ?: mutableListOf()
+
+internal fun <T, R> List<T>?.mapToMutable(transform: (T) -> R): MutableList<R> =
+    this?.asSequence()?.map(transform)?.toMutableList().orEmptyMutable()

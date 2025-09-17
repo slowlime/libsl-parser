@@ -1,7 +1,7 @@
 package org.jetbrains.research.libsl.ast.decl
 
 import org.jetbrains.research.libsl.ast.Annotatable
-import org.jetbrains.research.libsl.ast.Annotation
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Generic
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
@@ -10,7 +10,7 @@ import org.jetbrains.research.libsl.location.Location
 
 class ActionDecl(
     override val location: Location?,
-    override val annotations: MutableList<Annotation>,
+    override val annotations: MutableList<LibSLAnnotation>,
     val name: Name,
     val generics: MutableList<Generic>,
     val params: MutableList<Param>,
@@ -18,7 +18,7 @@ class ActionDecl(
     val typeConstraints: MutableList<TypeConstraint>,
 ) : GlobalDecl, Annotatable {
     data class Param(
-        override val annotations: MutableList<Annotation>,
+        override val annotations: MutableList<LibSLAnnotation>,
         val name: Name,
         val typeExpr: TypeExpr,
     ) : Annotatable

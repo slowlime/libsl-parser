@@ -1,6 +1,6 @@
 package org.jetbrains.research.libsl.ast.decl
 
-import org.jetbrains.research.libsl.ast.Annotation
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.FunctionBody
 import org.jetbrains.research.libsl.ast.FunctionLike
 import org.jetbrains.research.libsl.ast.FunctionParam
@@ -10,7 +10,7 @@ import org.jetbrains.research.libsl.location.Location
 
 data class ConstructorDecl(
     override val location: Location?,
-    override val annotations: MutableList<Annotation>,
+    override val annotations: MutableList<LibSLAnnotation>,
     val isMethod: Boolean,
     override val name: Name,
     override val params: MutableList<FunctionParam>,
