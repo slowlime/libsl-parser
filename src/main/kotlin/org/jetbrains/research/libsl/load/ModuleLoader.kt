@@ -107,7 +107,14 @@ internal class ModuleLoader(private val libsl: LibSL, val file: LoadedFile, val 
         }
     }
 
-    internal fun processContract(ctx: LibSLParser.ContractContext): Contract = TODO()
+    internal fun processContract(ctx: LibSLParser.ContractContext): Contract = ContractProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.ContractRequiresContext -> process(ctx.requiresContract())
+            is LibSLParser.ContractEnsuresContext -> process(ctx.ensuresContract())
+            is LibSLParser.ContractAssignsContext -> process(ctx.assignsContract())
+            else -> error("unrecognized contract $ctx")
+        }
+    }
 
     internal fun processStmt(ctx: LibSLParser.StmtContext): Stmt = TODO()
 
