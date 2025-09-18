@@ -8,11 +8,11 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class StructDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val typeName: QualifiedTypeName,
-    val isType: TypeExpr?,
-    val forTypes: MutableList<TypeExpr>,
-    val typeConstraints: MutableList<TypeConstraint>,
-    val decls: MutableList<StructMemberDecl>,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var typeName: QualifiedTypeName,
+    var isType: TypeExpr?,
+    var forTypes: MutableList<TypeExpr>,
+    var typeConstraints: MutableList<TypeConstraint>,
+    var decls: MutableList<StructMemberDecl>,
 ) : GlobalDecl, Annotatable

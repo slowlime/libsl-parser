@@ -5,8 +5,8 @@ import org.jetbrains.research.libsl.ast.type.TypeArg
 import org.jetbrains.research.libsl.location.Location
 
 data class ProcCallExpr(
-    override val location: Location?,
-    val callee: Access,
-    val typeArgs: MutableList<TypeArg>?,
-    val args: MutableList<Expr>,
+    override var location: Location?,
+    var callee: Access,
+    var typeArgs: MutableList<TypeArg>?,
+    var args: MutableList<Expr>,
 ) : Expr

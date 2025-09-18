@@ -5,7 +5,7 @@ import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.location.LocationProvider
 
 data class Module(
-    override val location: Location?,
-    val header: Header?,
-    val decls: List<GlobalDecl>,
+    override var location: Location?,
+    var header: Header?,
+    var decls: List<GlobalDecl>,
 ) : LocationProvider

@@ -7,9 +7,9 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class VariableDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val mutable: Boolean,
-    val typeExpr: TypeExpr,
-    val init: Expr?,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var mutable: Boolean,
+    var typeExpr: TypeExpr,
+    var init: Expr?,
 ) : GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Annotatable

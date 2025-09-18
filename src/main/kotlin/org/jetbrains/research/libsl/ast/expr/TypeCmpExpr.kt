@@ -4,7 +4,7 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class TypeCmpExpr(
-    override val location: Location?,
-    val lhs: Expr,
-    val rhs: TypeExpr,
+    override var location: Location?,
+    var lhs: Expr,
+    var rhs: TypeExpr,
 ) : Expr

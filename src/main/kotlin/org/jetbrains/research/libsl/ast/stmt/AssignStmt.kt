@@ -5,10 +5,10 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 
 data class AssignStmt(
-    override val location: Location?,
-    val lhs: Access,
-    val inPlaceOp: InPlaceOp?,
-    val rhs: Expr,
+    override var location: Location?,
+    var lhs: Access,
+    var inPlaceOp: InPlaceOp?,
+    var rhs: Expr,
 ) : Stmt {
     enum class InPlaceOp {
         Add,

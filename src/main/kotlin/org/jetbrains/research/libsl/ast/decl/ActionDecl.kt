@@ -9,17 +9,17 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 class ActionDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val name: Name,
-    val generics: MutableList<Generic>,
-    val params: MutableList<Param>,
-    val returnType: TypeExpr?,
-    val typeConstraints: MutableList<TypeConstraint>,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var name: Name,
+    var generics: MutableList<Generic>,
+    var params: MutableList<Param>,
+    var returnType: TypeExpr?,
+    var typeConstraints: MutableList<TypeConstraint>,
 ) : GlobalDecl, Annotatable {
     data class Param(
-        override val annotations: MutableList<LibSLAnnotation>,
-        val name: Name,
-        val typeExpr: TypeExpr,
+        override var annotations: MutableList<LibSLAnnotation>,
+        var name: Name,
+        var typeExpr: TypeExpr,
     ) : Annotatable
 }

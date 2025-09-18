@@ -12,15 +12,15 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class FunctionDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val isStatic: Boolean,
-    val extensionFor: FullName?,
-    val isMethod: Boolean,
-    override val name: Name,
-    val generics: MutableList<Generic>,
-    override val params: MutableList<FunctionParam>,
-    override val returnType: TypeExpr?,
-    val typeConstraints: MutableList<TypeConstraint>,
-    override val body: FunctionBody?,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var isStatic: Boolean,
+    var extensionFor: FullName?,
+    var isMethod: Boolean,
+    override var name: Name,
+    var generics: MutableList<Generic>,
+    override var params: MutableList<FunctionParam>,
+    override var returnType: TypeExpr?,
+    var typeConstraints: MutableList<TypeConstraint>,
+    override var body: FunctionBody?,
 ) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl

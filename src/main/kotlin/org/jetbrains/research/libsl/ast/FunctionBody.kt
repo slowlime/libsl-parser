@@ -4,6 +4,6 @@ import org.jetbrains.research.libsl.ast.contract.Contract
 import org.jetbrains.research.libsl.ast.stmt.Stmt
 
 data class FunctionBody(
-    val contracts: MutableList<Contract>,
-    val stmts: MutableList<Stmt>
+    var contracts: MutableList<Contract>,
+    var stmts: MutableList<Stmt>
 )

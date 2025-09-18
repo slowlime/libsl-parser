@@ -9,11 +9,11 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class ConstructorDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val isMethod: Boolean,
-    override val name: Name,
-    override val params: MutableList<FunctionParam>,
-    override val returnType: TypeExpr?,
-    override val body: FunctionBody?,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var isMethod: Boolean,
+    override var name: Name,
+    override var params: MutableList<FunctionParam>,
+    override var returnType: TypeExpr?,
+    override var body: FunctionBody?,
 ) : FunctionLike, AutomatonMemberDecl

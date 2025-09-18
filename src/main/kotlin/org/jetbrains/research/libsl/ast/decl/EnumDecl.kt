@@ -8,10 +8,10 @@ import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.location.Location
 
 data class EnumDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val typeName: QualifiedTypeName,
-    val variants: MutableList<Variant>
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var typeName: QualifiedTypeName,
+    var variants: MutableList<Variant>
 ) : GlobalDecl, Annotatable {
-    data class Variant(val name: Name, val value: IntLit)
+    data class Variant(var name: Name, var value: IntLit)
 }

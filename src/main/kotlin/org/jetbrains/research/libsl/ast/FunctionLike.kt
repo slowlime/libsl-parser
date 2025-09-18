@@ -4,8 +4,8 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.LocationProvider
 
 interface FunctionLike : LocationProvider, Annotatable {
-    val name: Name
-    val params: MutableList<FunctionParam>
-    val returnType: TypeExpr?
-    val body: FunctionBody?
+    var name: Name
+    var params: MutableList<FunctionParam>
+    var returnType: TypeExpr?
+    var body: FunctionBody?
 }

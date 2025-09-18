@@ -1,6 +1,6 @@
 package org.jetbrains.research.libsl.ast
 
 data class QualifiedTypeName(
-    val typeName: FullName,
-    val generics: MutableList<Generic>,
+    var typeName: FullName,
+    var generics: MutableList<Generic>,
 )

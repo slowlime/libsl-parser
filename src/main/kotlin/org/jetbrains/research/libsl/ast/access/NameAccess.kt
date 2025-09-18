@@ -3,6 +3,6 @@ package org.jetbrains.research.libsl.ast.access
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.location.Location
 
-data class NameAccess(val name: Name) : Access {
-    override val location: Location? by name::location
+data class NameAccess(var name: Name) : Access {
+    override var location: Location? by name::location
 }

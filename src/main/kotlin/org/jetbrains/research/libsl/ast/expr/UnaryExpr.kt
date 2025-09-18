@@ -3,9 +3,9 @@ package org.jetbrains.research.libsl.ast.expr
 import org.jetbrains.research.libsl.location.Location
 
 data class UnaryExpr(
-    override val location: Location?,
-    val op: Op,
-    val rhs: Expr,
+    override var location: Location?,
+    var op: Op,
+    var rhs: Expr,
 ) : Expr {
     enum class Op {
         Plus,

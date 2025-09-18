@@ -1,5 +1,5 @@
 package org.jetbrains.research.libsl.ast
 
 interface Annotatable {
-    val annotations: MutableList<LibSLAnnotation>
+    var annotations: MutableList<LibSLAnnotation>
 }

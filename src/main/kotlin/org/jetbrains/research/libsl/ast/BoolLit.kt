@@ -2,4 +2,4 @@ package org.jetbrains.research.libsl.ast
 
 import org.jetbrains.research.libsl.location.Location
 
-data class BoolLit(override val location: Location?, val value: Boolean) : PrimitiveLit
+data class BoolLit(override var location: Location?, var value: Boolean) : PrimitiveLit

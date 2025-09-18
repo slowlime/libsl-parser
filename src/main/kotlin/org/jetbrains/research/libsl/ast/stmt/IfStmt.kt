@@ -4,8 +4,8 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 
 data class IfStmt(
-    override val location: Location?,
-    val condition: Expr,
-    val thenBranch: MutableList<Stmt>,
-    val elseBranch: MutableList<Stmt>?,
+    override var location: Location?,
+    var condition: Expr,
+    var thenBranch: MutableList<Stmt>,
+    var elseBranch: MutableList<Stmt>?,
 ) : Stmt

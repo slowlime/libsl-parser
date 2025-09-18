@@ -5,7 +5,7 @@ import org.jetbrains.research.libsl.ast.access.Access
 import org.jetbrains.research.libsl.location.Location
 
 data class HasConceptExpr(
-    override val location: Location?,
-    val lhs: Access,
-    val concept: Name,
+    override var location: Location?,
+    var lhs: Access,
+    var concept: Name,
 ) : Expr

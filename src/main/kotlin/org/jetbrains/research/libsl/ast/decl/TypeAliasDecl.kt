@@ -7,8 +7,8 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class TypeAliasDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val typeName: QualifiedTypeName,
-    val typeExpr: TypeExpr,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var typeName: QualifiedTypeName,
+    var typeExpr: TypeExpr,
 ) : GlobalDecl, Annotatable

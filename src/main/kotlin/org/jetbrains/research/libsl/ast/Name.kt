@@ -4,6 +4,6 @@ import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.location.LocationProvider
 
 data class Name(
-    override val location: Location?,
-    val name: String,
+    override var location: Location?,
+    var name: String,
 ) : LocationProvider

@@ -4,7 +4,7 @@ import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.location.Location
 
 data class FieldAccess(
-    override val location: Location?,
-    val base: Access,
-    val field: Name,
+    override var location: Location?,
+    var base: Access,
+    var field: Name,
 ) : Access

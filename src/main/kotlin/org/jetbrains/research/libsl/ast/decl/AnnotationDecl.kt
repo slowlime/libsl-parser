@@ -6,9 +6,9 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class AnnotationDecl(
-    override val location: Location?,
-    val name: Name,
-    val params: MutableList<Param>,
+    override var location: Location?,
+    var name: Name,
+    var params: MutableList<Param>,
 ) : GlobalDecl {
-    data class Param(val name: Name, val typeExpr: TypeExpr, val default: Expr?)
+    data class Param(var name: Name, var typeExpr: TypeExpr, var default: Expr?)
 }

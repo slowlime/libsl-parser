@@ -5,7 +5,7 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 
 data class AssignsContract(
-    override val location: Location?,
-    val name: Name?,
-    val expr: Expr,
+    override var location: Location?,
+    var name: Name?,
+    var expr: Expr,
 ) : Contract

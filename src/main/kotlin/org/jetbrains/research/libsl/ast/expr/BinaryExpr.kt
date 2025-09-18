@@ -3,10 +3,10 @@ package org.jetbrains.research.libsl.ast.expr
 import org.jetbrains.research.libsl.location.Location
 
 data class BinaryExpr(
-    override val location: Location?,
-    val lhs: Expr,
-    val op: Op,
-    val rhs: Expr,
+    override var location: Location?,
+    var lhs: Expr,
+    var op: Op,
+    var rhs: Expr,
 ) : Expr {
     enum class Op {
         Mul,

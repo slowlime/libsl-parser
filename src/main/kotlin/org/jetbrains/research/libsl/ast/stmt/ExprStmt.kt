@@ -4,6 +4,6 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 
 data class ExprStmt(
-    override val location: Location?,
-    val expr: Expr,
+    override var location: Location?,
+    var expr: Expr,
 ) : Stmt

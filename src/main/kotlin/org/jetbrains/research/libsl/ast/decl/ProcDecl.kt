@@ -1,20 +1,23 @@
 package org.jetbrains.research.libsl.ast.decl
 
+import org.jetbrains.research.libsl.ast.FunctionBody
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.FunctionLike
 import org.jetbrains.research.libsl.ast.FunctionParam
+import org.jetbrains.research.libsl.ast.Generic
 import org.jetbrains.research.libsl.ast.Name
+import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 
 data class ProcDecl(
-    override val location: Location?,
-    override val annotations: MutableList<LibSLAnnotation>,
-    val isMethod: Boolean,
-    override val name: Name,
-    val generics: MutableList<Generic>,
-    override val params: MutableList<FunctionParam>,
-    override val returnType: TypeExpr?,
-    val typeConstraints: MutableList<TypeConstraint>,
-    override val body: FunctionBody?,
+    override var location: Location?,
+    override var annotations: MutableList<LibSLAnnotation>,
+    var isMethod: Boolean,
+    override var name: Name,
+    var generics: MutableList<Generic>,
+    override var params: MutableList<FunctionParam>,
+    override var returnType: TypeExpr?,
+    var typeConstraints: MutableList<TypeConstraint>,
+    override var body: FunctionBody?,
 ) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl
