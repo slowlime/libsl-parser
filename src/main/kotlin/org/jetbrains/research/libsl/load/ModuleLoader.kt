@@ -8,6 +8,7 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import org.jetbrains.research.libsl.LibSL
 import org.jetbrains.research.libsl.LibSLLexer
 import org.jetbrains.research.libsl.LibSLParser
+import org.jetbrains.research.libsl.ast.FloatLit
 import org.jetbrains.research.libsl.ast.FullName
 import org.jetbrains.research.libsl.ast.FunctionParam
 import org.jetbrains.research.libsl.ast.Generic
@@ -130,9 +131,43 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
         }
     }
 
-    internal fun processAtomicExpr(ctx: LibSLParser.AtomicExprContext): Expr = TODO()
+    internal fun processAtomicExpr(ctx: LibSLParser.AtomicExprContext): Expr = ExprProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.AtomicExprParenContext -> processAtomicExpr(ctx.inner)
+            is LibSLParser.AtomicExprPrimitiveLitContext -> process(ctx)
+            is LibSLParser.AtomicExprSignedNumLitContext -> process(ctx)
+            is LibSLParser.AtomicExprArrayLitContext -> process(ctx.arrayLitExpr())
+            is LibSLParser.AtomicExprAccessContext -> process(ctx)
+            else -> error("unrecognized atomic expr $ctx")
+        }
+    }
 
-    internal fun processExpr(ctx: LibSLParser.ExprContext): Expr = TODO()
+    internal fun processExpr(ctx: LibSLParser.ExprContext): Expr = ExprProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.ExprParenContext -> processExpr(ctx.inner)
+            is LibSLParser.ExprPrimitiveLitContext -> process(ctx)
+            is LibSLParser.ExprArrayLitContext -> process(ctx.arrayLitExpr())
+            is LibSLParser.ExprPrevContext -> process(ctx)
+            is LibSLParser.ExprProcCallContext -> process(ctx.procCallExpr())
+            is LibSLParser.ExprActionCallContext -> process(ctx.actionCallExpr())
+            is LibSLParser.ExprInstantiationContext -> process(ctx.instantiationExpr())
+            is LibSLParser.ExprAccessContext -> process(ctx)
+            is LibSLParser.ExprUnaryContext -> process(ctx)
+            is LibSLParser.ExprHasConceptContext -> process(ctx)
+            is LibSLParser.ExprTypeComparisonContext -> process(ctx)
+            is LibSLParser.ExprCastContext -> process(ctx)
+            is LibSLParser.ExprMultiplicativeContext -> process(ctx)
+            is LibSLParser.ExprAdditiveContext -> process(ctx)
+            is LibSLParser.ExprShiftContext -> process(ctx)
+            is LibSLParser.ExprBitAndContext -> process(ctx)
+            is LibSLParser.ExprBitXorContext -> process(ctx)
+            is LibSLParser.ExprBitOrContext -> process(ctx)
+            is LibSLParser.ExprRelationalContext -> process(ctx)
+            is LibSLParser.ExprAndContext -> process(ctx)
+            is LibSLParser.ExprOrContext -> process(ctx)
+            else -> error("unrecognized expr $ctx")
+        }
+    }
 
     internal fun processAccess(ctx: LibSLParser.AccessContext): Access = TODO()
 
@@ -184,14 +219,20 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
 
     internal fun processWhereClause(ctx: LibSLParser.WhereClauseContext): MutableList<TypeConstraint> = TODO()
 
+    internal fun processSignedNumLit(ctx: LibSLParser.SignedNumLitContext): PrimitiveLit = TODO()
+
     internal fun processSignedIntLit(ctx: LibSLParser.SignedIntLitContext): IntLit = TODO()
 
     internal fun processPrimitiveLit(ctx: LibSLParser.PrimitiveLitContext): PrimitiveLit = TODO()
 
+    internal fun processIntLit(sign: Int, ctx: Token): IntLit = TODO()
+
+    internal fun processFloatLit(sign: Int, ctx: Token): FloatLit = TODO()
+
     internal fun processTypeArg(ctx: LibSLParser.TypeArgContext): TypeArg = when (ctx) {
         is LibSLParser.TypeArgTypeExprContext -> processTypeExpr(ctx.typeExpr())
         is LibSLParser.TypeArgWildcardContext -> TypeArg.Wildcard(locationOf(ctx))
-        else -> error("unknown type arg $ctx")
+        else -> error("unrecognized type arg $ctx")
     }
 }
 

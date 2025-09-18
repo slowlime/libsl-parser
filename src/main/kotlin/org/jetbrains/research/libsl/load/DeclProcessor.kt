@@ -64,7 +64,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
                 },
             )
 
-            else -> error("unknown semantic type def $ctx")
+            else -> error("unrecognized semantic type def $ctx")
         }
     }
 
@@ -162,7 +162,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
                 is LibSLParser.StateKindInitialContext -> StateDecl.Kind.Initial
                 is LibSLParser.StateKindRegularContext -> StateDecl.Kind.Regular
                 is LibSLParser.StateKindFinalContext -> StateDecl.Kind.Final
-                else -> error("unknown state kind $ctx")
+                else -> error("unrecognized state kind $ctx")
             },
             loader.processName(name),
         )
@@ -173,13 +173,13 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         when (val from = ctx.from) {
             is LibSLParser.ShiftSourceStateShorthandContext -> mutableListOf(loader.processName(from.Identifier()))
             is LibSLParser.ShiftSourceStateListContext -> from.states?.names.mapToMutable(loader::processName)
-            else -> error("unknown shift source state $ctx")
+            else -> error("unrecognized shift source state $ctx")
         },
         loader.processName(ctx.to),
         when (val by = ctx.by) {
             is LibSLParser.ShiftByShorthandContext -> mutableListOf(processFunctionSignature(by.signature))
             is LibSLParser.ShiftByListContext -> by.signatures?.signatures.mapToMutable(::processFunctionSignature)
-            else -> error("unknown shift edge $ctx")
+            else -> error("unrecognized shift edge $ctx")
         },
     )
 
@@ -218,7 +218,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
     private fun processStructMemberDecl(ctx: LibSLParser.StructDefDeclContext): StructMemberDecl = when (ctx) {
         is LibSLParser.StructDefDeclFunctionContext -> process(ctx.functionDecl())
         is LibSLParser.StructDefDeclVariableContext -> process(ctx.variableDecl())
-        else -> error("unknown struct member decl $ctx")
+        else -> error("unrecognized struct member decl $ctx")
     }
 
     private fun processConstructorVariable(ctx: LibSLParser.ConstructorVariableContext): VariableDecl = VariableDecl(
@@ -238,7 +238,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
             is LibSLParser.AutomatonDefDeclProcContext -> listOf(process(ctx.procDecl()))
             is LibSLParser.AutomatonDefDeclFunctionContext -> listOf(process(ctx.functionDecl()))
             is LibSLParser.AutomatonDefDeclVariableContext -> listOf(process(ctx.variableDecl()))
-            else -> error("unknown automaton member decl $ctx")
+            else -> error("unrecognized automaton member decl $ctx")
         }
 
     private fun processFunctionParam(ctx: LibSLParser.FunctionParamContext): FunctionParam = FunctionParam(
@@ -250,7 +250,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
     private fun processFunctionDef(ctx: LibSLParser.FunctionDefContext): FunctionBody? = when (ctx) {
         is LibSLParser.FunctionDefSemicolonContext -> null
         is LibSLParser.FunctionDefBracedContext -> processFunctionBody(ctx.body)
-        else -> error("unknown function def $ctx")
+        else -> error("unrecognized function def $ctx")
     }
 
     private fun processFunctionBody(ctx: LibSLParser.FunctionBodyContext): FunctionBody = FunctionBody(
@@ -269,6 +269,6 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
             ctx.params?.typeExprs.mapToMutable(loader::processTypeExpr),
         )
 
-        else -> error("unknown function signature $ctx")
+        else -> error("unrecognized function signature $ctx")
     }
 }

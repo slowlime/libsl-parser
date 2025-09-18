@@ -34,7 +34,7 @@ internal class StmtProcessor(private val loader: ModuleLoader) {
             is LibSLParser.OpBitXorAssignContext -> AssignStmt.InPlaceOp.BitXor
             is LibSLParser.OpLShiftAssignContext -> AssignStmt.InPlaceOp.LShift
             is LibSLParser.OpRShiftAssignContext -> AssignStmt.InPlaceOp.RShift
-            else -> error("unknown assign op ${ctx.op}")
+            else -> error("unrecognized assign op ${ctx.op}")
         },
         loader.processExpr(ctx.rhs),
     )
@@ -47,6 +47,6 @@ internal class StmtProcessor(private val loader: ModuleLoader) {
     private fun processBlock(ctx: LibSLParser.BlockContext): MutableList<Stmt> = when (ctx) {
         is LibSLParser.BlockLoneStmtContext -> mutableListOf(loader.processStmt(ctx.stmt()))
         is LibSLParser.BlockBracedContext -> ctx.stmts.mapToMutable(loader::processStmt)
-        else -> error("unknown block $ctx")
+        else -> error("unrecognized block $ctx")
     }
 }
