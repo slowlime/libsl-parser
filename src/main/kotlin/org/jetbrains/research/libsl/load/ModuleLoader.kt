@@ -8,18 +8,22 @@ import org.antlr.v4.runtime.tree.TerminalNode
 import org.jetbrains.research.libsl.LibSL
 import org.jetbrains.research.libsl.LibSLLexer
 import org.jetbrains.research.libsl.LibSLParser
+import org.jetbrains.research.libsl.ast.BoolLit
+import org.jetbrains.research.libsl.ast.CharLit
 import org.jetbrains.research.libsl.ast.FloatLit
 import org.jetbrains.research.libsl.ast.FullName
-import org.jetbrains.research.libsl.ast.FunctionParam
 import org.jetbrains.research.libsl.ast.Generic
 import org.jetbrains.research.libsl.ast.Header
 import org.jetbrains.research.libsl.ast.IntLit
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.ast.Name
+import org.jetbrains.research.libsl.ast.NullLit
 import org.jetbrains.research.libsl.ast.PrimitiveLit
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
+import org.jetbrains.research.libsl.ast.StringLit
 import org.jetbrains.research.libsl.ast.TypeConstraint
+import org.jetbrains.research.libsl.ast.Variance
 import org.jetbrains.research.libsl.ast.access.Access
 import org.jetbrains.research.libsl.ast.contract.Contract
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
@@ -215,19 +219,103 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
     internal fun processGenerics(ctx: LibSLParser.GenericsContext): MutableList<Generic> =
         ctx.list?.params.mapToMutable(::processGeneric)
 
-    private fun processGeneric(ctx: LibSLParser.GenericContext): Generic = TODO()
+    private fun processGeneric(ctx: LibSLParser.GenericContext): Generic = Generic(
+        ctx.variance?.let(::processVarianceSpec),
+        processName(ctx.name),
+    )
 
-    internal fun processWhereClause(ctx: LibSLParser.WhereClauseContext): MutableList<TypeConstraint> = TODO()
+    private fun processVarianceSpec(ctx: LibSLParser.VarianceSpecContext): Variance = when (ctx) {
+        is LibSLParser.CovariantContext -> Variance.Covariant
+        is LibSLParser.ContravariantContext -> Variance.Contravariant
+        is LibSLParser.InvariantContext -> Variance.Invariant
+        else -> error("unrecognized variance spec $ctx")
+    }
 
-    internal fun processSignedNumLit(ctx: LibSLParser.SignedNumLitContext): PrimitiveLit = TODO()
+    internal fun processWhereClause(ctx: LibSLParser.WhereClauseContext): MutableList<TypeConstraint> =
+        ctx.constraints.mapToMutable(::processTypeConstraint)
 
-    internal fun processSignedIntLit(ctx: LibSLParser.SignedIntLitContext): IntLit = TODO()
+    private fun processTypeConstraint(ctx: LibSLParser.TypeConstraintContext): TypeConstraint = TypeConstraint(
+        processName(ctx.param),
+        ctx.variance?.let(::processVarianceSpec),
+        processTypeArg(ctx.bound),
+    )
 
-    internal fun processPrimitiveLit(ctx: LibSLParser.PrimitiveLitContext): PrimitiveLit = TODO()
+    internal fun processSignedNumLit(ctx: LibSLParser.SignedNumLitContext): PrimitiveLit {
+        val lit = when (ctx) {
+            is LibSLParser.SignedNumLitIntContext -> processIntLit(processSign(ctx.sign()), ctx.IntegerLit().symbol)
+            is LibSLParser.SignedNumLitFloatContext -> processFloatLit(processSign(ctx.sign()), ctx.FloatLit().symbol)
+            else -> error("unrecognized signed num lit $ctx")
+        }
+
+        lit.location = locationOf(ctx)
+
+        return lit
+    }
+
+    private fun processSign(ctx: LibSLParser.SignContext): Int = when (ctx) {
+        is LibSLParser.PlusSignContext -> 1
+        is LibSLParser.MinusSignContext -> -1
+        else -> error("unrecognized sign $ctx")
+    }
+
+    internal fun processSignedIntLit(ctx: LibSLParser.SignedIntLitContext): IntLit = processIntLit(
+        processSign(ctx.sign()),
+        ctx.lit,
+    )
+
+    internal fun processPrimitiveLit(ctx: LibSLParser.PrimitiveLitContext): PrimitiveLit = when (ctx) {
+        is LibSLParser.PrimitiveLitIntContext -> processIntLit(0, ctx.IntegerLit().symbol)
+        is LibSLParser.PrimitiveLitFloatContext -> processFloatLit(0, ctx.FloatLit().symbol)
+        is LibSLParser.PrimitiveLitStringLitContext -> processStringLit(ctx.StringLit().symbol)
+        is LibSLParser.PrimitiveLitCharContext -> processCharLit(ctx.CharacterLit().symbol)
+        is LibSLParser.PrimitiveLitTrueContext -> BoolLit(locationOf(ctx), true)
+        is LibSLParser.PrimitiveLitFalseContext -> BoolLit(locationOf(ctx), false)
+        is LibSLParser.PrimitiveLitNullContext -> NullLit(locationOf(ctx))
+        else -> error("unrecognized primitive lit $ctx")
+    }
 
     internal fun processIntLit(sign: Int, ctx: Token): IntLit = TODO()
 
     internal fun processFloatLit(sign: Int, ctx: Token): FloatLit = TODO()
+
+    private fun processStringLit(token: Token): StringLit {
+        require(token.type == LibSLLexer.StringLit)
+
+        return StringLit(
+            locationOf(token),
+            token.parseStringLit(),
+        )
+    }
+
+    private fun processCharLit(token: Token): CharLit {
+        require(token.type == LibSLLexer.CharacterLit)
+
+        val s = token.text.substring(1, token.text.length - 1)
+
+        return CharLit(
+            locationOf(token),
+            when (s) {
+                "\\b" -> '\b'.code
+                "\\t" -> '\t'.code
+                "\\n" -> '\n'.code
+                "\\f" -> 0x0c // form feed
+                "\\r" -> '\r'.code
+                "\\\"" -> '"'.code
+                "\\'" -> '\''.code
+                "\\\\" -> '\\'.code
+
+                // unicode escape
+                else if s.startsWith("\\u") -> s.substring(2).toInt(16)
+
+                // octal escape
+                else if s[0] in '0'..'7' -> s.substring(2).toInt(8)
+
+                else if s.startsWith("\\") -> error("unrecognized escape sequence: '$s'")
+
+                else -> s.codePointAt(0)
+            },
+        )
+    }
 
     internal fun processTypeArg(ctx: LibSLParser.TypeArgContext): TypeArg = when (ctx) {
         is LibSLParser.TypeArgTypeExprContext -> processTypeExpr(ctx.typeExpr())
