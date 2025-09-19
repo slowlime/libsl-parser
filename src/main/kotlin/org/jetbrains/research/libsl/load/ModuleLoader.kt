@@ -173,7 +173,14 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
         }
     }
 
-    internal fun processAccess(ctx: LibSLParser.AccessContext): Access = TODO()
+    internal fun processAccess(ctx: LibSLParser.AccessContext): Access = AccessProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.AccessNameContext -> process(ctx)
+            is LibSLParser.AccessFieldContext -> process(ctx)
+            is LibSLParser.AccessIndexContext -> process(ctx)
+            else -> error("unrecognized access $ctx")
+        }
+    }
 
     internal fun processPath(ctx: LibSLParser.PathContext): String {
         return when (ctx) {
