@@ -2,6 +2,7 @@ package org.jetbrains.research.libsl
 
 import org.antlr.v4.runtime.ANTLRErrorListener
 import org.jetbrains.research.libsl.ast.Module
+import org.jetbrains.research.libsl.exception.LibSLException
 import org.jetbrains.research.libsl.location.CanonicalPath
 import org.jetbrains.research.libsl.file.FileLoader
 import org.jetbrains.research.libsl.file.LoadedFile
@@ -10,6 +11,11 @@ import org.jetbrains.research.libsl.location.LoadChain
 import java.nio.file.Path
 
 class LibSL(private val fileLoader: FileLoader) {
+    sealed interface LoadResult {
+        data class Ok(val module: Module) : LoadResult
+        data class Error(val errors: List<LibSLException>) : LoadResult
+    }
+
     var syntaxErrorListener: ANTLRErrorListener? = null
 
     internal sealed interface ModuleState {
@@ -24,16 +30,20 @@ class LibSL(private val fileLoader: FileLoader) {
     private val requestsByPath = mutableMapOf<CanonicalPath, ModuleLoadRequest>()
     private val requestQueue = ArrayDeque<ModuleLoadRequest>()
 
-    fun load(path: Path): Module = load(path.toString())
+    fun load(path: Path): LoadResult = load(path.toString())
 
-    fun load(path: String): Module {
+    fun load(path: String): LoadResult {
         val request = requestLoad(path, loadChain = null)
-        processLoadRequests()
+        val error = processLoadRequests()
+
+        if (error != null) {
+            return error
+        }
 
         val state = request.state
         check(state is ModuleState.Loaded)
 
-        return state.module
+        return LoadResult.Ok(state.module)
     }
 
     internal fun requestLoad(path: String, loadChain: LoadChain?): ModuleLoadRequest {
@@ -46,14 +56,20 @@ class LibSL(private val fileLoader: FileLoader) {
         }
     }
 
-    private fun processLoadRequests() {
+    private fun processLoadRequests(): LoadResult.Error? {
         while (requestQueue.isNotEmpty()) {
             val request = requestQueue.removeFirst()
             val state = request.state
             check(state is ModuleState.InProgress)
 
-            val module = ModuleLoader(this, state.file, state.loadChain).load()
+            val module = when (val result = ModuleLoader(this, state.file, state.loadChain).load()) {
+                is LoadResult.Ok -> result.module
+                is LoadResult.Error -> return result
+            }
+
             request.state = ModuleState.Loaded(state.file, module)
         }
+
+        return null
     }
 }

@@ -9,3 +9,9 @@ open class LocalizedException(
     message: String,
     cause: Throwable?,
 ) : LibSLException(message, cause)
+
+class IllegalSyntaxException(
+    location: Location,
+    message: String,
+    cause: Throwable?,
+) : LocalizedException(location, message, cause)

@@ -1,8 +1,11 @@
 package org.jetbrains.research.libsl.load
 
+import org.antlr.v4.runtime.BaseErrorListener
 import org.antlr.v4.runtime.CharStreams
 import org.antlr.v4.runtime.CommonTokenStream
 import org.antlr.v4.runtime.ParserRuleContext
+import org.antlr.v4.runtime.RecognitionException
+import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
 import org.antlr.v4.runtime.tree.TerminalNode
 import org.jetbrains.research.libsl.LibSL
@@ -32,19 +35,47 @@ import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.stmt.Stmt
 import org.jetbrains.research.libsl.ast.type.TypeArg
 import org.jetbrains.research.libsl.ast.type.TypeExpr
+import org.jetbrains.research.libsl.exception.IllegalSyntaxException
 import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.location.LoadChain
 import org.jetbrains.research.libsl.location.Location
 
 internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChain: LoadChain) {
-    fun load(): Module {
+    fun load(): LibSL.LoadResult {
         val stream = CharStreams.fromString(file.contents, file.canonicalPath.path)
         val lexer = LibSLLexer(stream)
         val tokenStream = CommonTokenStream(lexer)
         val parser = LibSLParser(tokenStream)
         libsl.syntaxErrorListener?.let { parser.addErrorListener(it) }
 
-        return processFile(parser.file())
+        val errors = mutableListOf<IllegalSyntaxException>()
+
+        parser.addErrorListener(object : BaseErrorListener() {
+            override fun syntaxError(
+                recognizer: Recognizer<*, *>?,
+                offendingSymbol: Any?,
+                line: Int,
+                charPositionInLine: Int,
+                msg: String?,
+                e: RecognitionException?
+            ) {
+                super.syntaxError(recognizer, offendingSymbol, line, charPositionInLine, msg, e)
+
+                errors += IllegalSyntaxException(
+                    Location(loadChain, file.canonicalPath, line, charPositionInLine + 1),
+                    msg ?: "encountered syntax error",
+                    e
+                )
+            }
+        })
+
+        val file = parser.file()
+
+        if (errors.isNotEmpty()) {
+            return LibSL.LoadResult.Error(errors)
+        }
+
+        return LibSL.LoadResult.Ok(processFile(file))
     }
 
     internal fun locationOf(ctx: ParserRuleContext): Location = Location(
