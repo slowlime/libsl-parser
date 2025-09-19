@@ -274,9 +274,93 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
         else -> error("unrecognized primitive lit $ctx")
     }
 
-    internal fun processIntLit(sign: Int, ctx: Token): IntLit = TODO()
+    private fun String.splitSuffix(suffix: String, ignoreCase: Boolean = false): Pair<String, String>? =
+        if (endsWith(suffix, ignoreCase)) {
+            Pair(dropLast(suffix.length), suffix)
+        } else {
+            null
+        }
 
-    internal fun processFloatLit(sign: Int, ctx: Token): FloatLit = TODO()
+    private fun String.splitPrefix(prefix: String, ignoreCase: Boolean = false): Pair<String, String>? =
+        if (startsWith(prefix, ignoreCase)) {
+            Pair(drop(prefix.length), prefix)
+        } else {
+            null
+        }
+
+    internal fun processIntLit(sign: Int, token: Token): IntLit {
+        require(token.type == LibSLLexer.IntegerLit)
+
+        var s = token.text
+
+        val suffixSplit = s.splitSuffix("uL")
+            ?: s.splitSuffix("l", ignoreCase = true)
+            ?: s.splitSuffix("ux")
+            ?: s.splitSuffix("x")
+            ?: s.splitSuffix("us")
+            ?: s.splitSuffix("s")
+            ?: s.splitSuffix("u")
+            ?: Pair(s, null)
+        s = suffixSplit.first
+        val suffix = suffixSplit.second
+
+        val prefixSplit = s.splitPrefix("0x", ignoreCase = true)
+            ?: s.splitPrefix("0b", ignoreCase = true)
+            ?: s.splitPrefix("0")?.takeIf { it.first.isNotEmpty() }
+            ?: Pair(s, null)
+        s = prefixSplit.first
+
+        val radix = when (prefixSplit.second) {
+            "0x" -> 16
+            "0b" -> 2
+            "0" -> 8
+            else -> 0
+        }
+
+        s = when {
+            sign > 0 -> "+$s"
+            sign < 0 -> "-$s"
+            else -> s
+        }
+
+        val location = locationOf(token)
+
+        return when (suffix) {
+            "uL" -> IntLit.of(location, s.toULong(radix))
+            "l", "L" -> IntLit.of(location, s.toLong(radix))
+            "ux" -> IntLit.of(location, s.toUByte(radix))
+            "x" -> IntLit.of(location, s.toByte(radix))
+            "us" -> IntLit.of(location, s.toUShort(radix))
+            "s" -> IntLit.of(location, s.toShort(radix))
+            "u" -> IntLit.of(location, s.toUInt(radix))
+            else -> IntLit.of(location, s.toInt(radix))
+        }
+    }
+
+    internal fun processFloatLit(sign: Int, token: Token): FloatLit {
+        require(token.type == LibSLLexer.FloatLit)
+
+        var s = token.text
+
+        val suffixSplit = s.splitSuffix("f", ignoreCase = true)
+            ?: s.splitSuffix("d", ignoreCase = true)
+            ?: Pair(s, "d")
+        s = suffixSplit.first
+        val suffix = suffixSplit.second
+
+        s = when {
+            sign > 0 -> "+$s"
+            sign < 0 -> "-$s"
+            else -> s
+        }
+
+        val location = locationOf(token)
+
+        return when (suffix) {
+            "f", "F" -> FloatLit.of(location, s.toFloat())
+            else -> FloatLit.of(location, s.toDouble())
+        }
+    }
 
     private fun processStringLit(token: Token): StringLit {
         require(token.type == LibSLLexer.StringLit)
