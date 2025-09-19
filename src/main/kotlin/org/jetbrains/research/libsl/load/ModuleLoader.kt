@@ -427,11 +427,7 @@ internal fun Token.parseStringLit(): String {
 internal fun Token.parseIdent(): String {
     require(type == LibSLLexer.Identifier)
 
-    return if (text.startsWith('`') && text.endsWith('`')) {
-        text.substring(1, text.length - 1)
-    } else {
-        text
-    }
+    return text.removeSurrounding("`")
 }
 
 internal fun <T> MutableList<T>?.orEmptyMutable(): MutableList<T> = this ?: mutableListOf()
