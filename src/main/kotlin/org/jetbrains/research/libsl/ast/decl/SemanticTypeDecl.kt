@@ -13,14 +13,14 @@ sealed class SemanticTypeDecl : GlobalDecl, Annotatable {
     abstract var realType: TypeExpr
 
     data class Simple(
-        override var location: Location,
+        override var location: Location?,
         override var annotations: MutableList<LibSLAnnotation>,
         override var typeName: QualifiedTypeName,
         override var realType: TypeExpr,
     ) : SemanticTypeDecl()
 
     data class Enumerated(
-        override var location: Location,
+        override var location: Location?,
         override var annotations: MutableList<LibSLAnnotation>,
         override var typeName: QualifiedTypeName,
         override var realType: TypeExpr,

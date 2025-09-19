@@ -1,4 +1,3 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -26,11 +25,11 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile> {
-    compilerOptions {
-        jvmTarget.set(JvmTarget.JVM_1_8)
-    }
+kotlin {
+    jvmToolchain(8)
+}
 
+tasks.withType<KotlinCompile> {
     dependsOn("generateGrammarSource")
 }
 
