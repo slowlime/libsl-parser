@@ -60,25 +60,27 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     }
 
     sealed interface AliasResult<T> {
-        data class Success<T>(val def: Def.Alias<T>) : AliasResult<T>
+        data class Success<T>(val def: Def.Alias<T>, val new: Boolean) : AliasResult<T>
         data class Conflict<T>(val previousDef: Def<T>) : AliasResult<T>
     }
 
     private inline fun <T, D : Def<T>, R> MutableMap<String, Def<T>>.addDef(
         def: D,
         onSuccess: (D) -> R,
+        onIgnored: (Def.Alias<T>) -> R,
         onConflict: (Def<T>) -> R,
     ): R {
         val previousDef = get(def.name)
 
-        return if (
-            previousDef == null
-            // aliases can override previous aliases as long as they resolve to the same primary def
-            || previousDef.isAlias() && def.isAlias() && previousDef.primary === def.primary
-        ) {
+        return if (previousDef == null) {
             put(def.name, def)
 
             onSuccess(def)
+        } else if (
+            // as long as they resolve to the same primary def, we ignore duplicate aliases
+            previousDef is Def.Alias && def.isAlias() && previousDef.primary === def.primary
+        ) {
+            onIgnored(previousDef)
         } else {
             onConflict(previousDef)
         }
@@ -91,13 +93,15 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     ): DefinitionResult<T> = addDef(
         Def.Primary(this@MutableScope, name, location, entity),
         onSuccess = { DefinitionResult.Success(it) },
+        onIgnored = { error("primary defs cannot get ignored") },
         onConflict = { DefinitionResult.Conflict(it) },
     )
 
     private fun <T> MutableMap<String, Def<T>>.alias(name: String, location: Location?, def: Def<T>): AliasResult<T> =
         addDef(
             Def.Alias(this@MutableScope, name, location, def),
-            onSuccess = { AliasResult.Success(it) },
+            onSuccess = { AliasResult.Success(it, new = true) },
+            onIgnored = { AliasResult.Success(it, new = false) },
             onConflict = { AliasResult.Conflict(it) },
         )
 
@@ -181,12 +185,12 @@ class ModuleScope private constructor(
     constructor(module: Module) : this(MutableScope(GlobalScope), module)
 
     sealed interface ImportResult<T> {
-        data class Success<T>(val def: Def.Alias<T>) : ImportResult<T>
+        data class Success<T>(val def: Def.Alias<T>, val new: Boolean) : ImportResult<T>
         data class Conflict<T>(val previousDef: Def.Alias<T>, val previousDefModule: Module) : ImportResult<T>
     }
 
     private fun <T> AliasResult<T>.toImportResult(): ImportResult<T> = when (this) {
-        is AliasResult.Success -> ImportResult.Success(this.def)
+        is AliasResult.Success -> ImportResult.Success(this.def, this.new)
 
         is AliasResult.Conflict -> {
             val previousDef = this.previousDef as Def.Alias<T>

@@ -15,30 +15,23 @@ import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
 import org.jetbrains.research.libsl.exception.ConflictingDefinitionException
+import org.jetbrains.research.libsl.exception.ConflictingImportException
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.scope.ModuleScope
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
 import org.jetbrains.research.libsl.type.AliasType
 import org.jetbrains.research.libsl.type.EnumType
 import org.jetbrains.research.libsl.type.SemanticType
 import org.jetbrains.research.libsl.type.StructType
 
-internal class ModuleResolver(private val libsl: LibSL, rootModule: Module) {
-    private val modules = mutableListOf(rootModule)
+internal class ModuleResolver(private val libsl: LibSL, private val rootModule: Module) {
+    // populated in `addTopLevelDefs`; in reverse post-order
+    private val modules = mutableListOf<Module>()
 
     fun resolve() {
         addTopLevelDefs()
         addImportedEntities()
         resolveTopLevelDefs()
-    }
-
-    private inline fun forEachModule(f: (Module) -> Unit) {
-        // this code is somewhat non-idiomatic to permit the module list to grow during iteration
-        var i = 0
-
-        while (i < modules.size) {
-            f(modules[i])
-            i += 1
-        }
     }
 
     private fun <T> MutableScope.DefinitionResult<T>.orThrow(name: Name): Def.Primary<T> =
@@ -56,11 +49,17 @@ internal class ModuleResolver(private val libsl: LibSL, rootModule: Module) {
         }
 
     private fun addTopLevelDefs() {
-        val discoveredModules = modules.toMutableSet()
+        data class Task(val module: Module, var declIdx: Int = 0)
 
-        forEachModule { module ->
-            for (decl in module.decls) {
-                when (decl) {
+        val discoveredModules = mutableSetOf(rootModule)
+        val taskStack = mutableListOf(Task(rootModule))
+
+        dfs@ while (taskStack.isNotEmpty()) {
+            val task = taskStack.last()
+            val module = task.module
+
+            while (task.declIdx < module.decls.size) {
+                when (val decl = module.decls[task.declIdx++]) {
                     is ActionDecl -> {
                         decl.primaryDef =
                             module.scope.define(decl.name.toString(), decl.name.location, decl).orThrow(decl.name)
@@ -92,7 +91,12 @@ internal class ModuleResolver(private val libsl: LibSL, rootModule: Module) {
 
                     is ImportDecl -> {
                         if (discoveredModules.add(decl.importedModule)) {
-                            modules += decl.importedModule
+                            taskStack += Task(decl.importedModule)
+                            module.imports += decl
+                            decl.importedModule.importedBy += Pair(module, decl)
+
+                            // process children first
+                            continue@dfs
                         }
                     }
 
@@ -127,11 +131,50 @@ internal class ModuleResolver(private val libsl: LibSL, rootModule: Module) {
                     }
                 }
             }
+
+            modules += module
+            taskStack.removeLast()
         }
     }
 
     private fun addImportedEntities() {
-        TODO("Not yet implemented")
+        val stack = modules.asReversed().toMutableList()
+        val queued = modules.toMutableSet()
+
+        fun push(module: Module) {
+            if (queued.add(module)) {
+                stack += module
+            }
+        }
+
+        while (stack.isNotEmpty()) {
+            val module = stack.removeLast()
+            queued -= module
+
+            for (decl in module.imports) {
+                val importedModule = decl.importedModule
+
+                for ((_, def) in importedModule.scope.types) {
+                    when (val result = module.scope.importType(decl.location, def)) {
+                        is ModuleScope.ImportResult.Success if result.new -> {
+                            for ((dependent, _) in module.importedBy) {
+                                push(dependent)
+                            }
+                        }
+
+                        is ModuleScope.ImportResult.Success -> {}
+
+                        is ModuleScope.ImportResult.Conflict -> throw ConflictingImportException(
+                            decl.location,
+                            "imported name `${def.name}` conflicts with a previous import",
+                            def.primary.location,
+                            result.previousDef.location,
+                            result.previousDef.primary.location,
+                        )
+                    }
+                }
+            }
+        }
     }
 
     private fun resolveTopLevelDefs() {
