@@ -164,9 +164,9 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
 
                         is ModuleScope.ImportResult.Success -> {}
 
-                        is ModuleScope.ImportResult.Conflict -> throw ConflictingImportException(
+                        is ModuleScope.ImportResult.Conflict -> throw ConflictingImportException.fromName(
+                            def.name,
                             decl.location,
-                            "imported name `${def.name}` conflicts with a previous import",
                             def.primary.location,
                             result.previousDef.location,
                             result.previousDef.primary.location,
