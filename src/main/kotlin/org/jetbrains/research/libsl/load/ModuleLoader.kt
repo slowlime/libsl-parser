@@ -94,7 +94,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
 
     private fun processFile(ctx: LibSLParser.FileContext): Module {
         val header = ctx.header()?.let(::processHeader)
-        val decls = ctx.decls.flatMap(::processGlobalDecl)
+        val decls = ctx.decls.flatMapToMutable(::processGlobalDecl)
 
         return Module(locationOf(ctx), header, decls)
     }

@@ -28,9 +28,13 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
     fun process(ctx: LibSLParser.ImportDeclContext): ImportDecl {
         val location = loader.locationOf(ctx)
         val path = loader.processPath(ctx.path())
-        loader.libsl.requestLoad(path, LoadChain.Imported(location))
+        val decl = ImportDecl(location, path)
 
-        return ImportDecl(location, path)
+        loader.libsl.requestLoad(path, LoadChain.Imported(location)) { module ->
+            decl.importedModule = module
+        }
+
+        return decl
     }
 
     fun process(ctx: LibSLParser.IncludeDeclContext): IncludeDecl = IncludeDecl(
@@ -151,6 +155,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         loader.locationOf(ctx),
         loader.processAnnotations(ctx.annotations),
         ctx.kind is LibSLParser.VariableKindVarContext,
+        loader.processName(ctx.name),
         loader.processTypeExpr(ctx.type),
         ctx.init?.let(loader::processExpr),
     )
@@ -225,6 +230,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         loader.locationOf(ctx),
         loader.processAnnotations(ctx.annotations),
         ctx.kind is LibSLParser.VariableKindVarContext,
+        loader.processName(ctx.name),
         loader.processTypeExpr(ctx.type),
         ctx.init?.let(loader::processExpr),
     )

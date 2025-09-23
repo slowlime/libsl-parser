@@ -20,4 +20,4 @@ data class ProcDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl
+) : FunctionLike, StructMemberDecl, AutomatonMemberDecl

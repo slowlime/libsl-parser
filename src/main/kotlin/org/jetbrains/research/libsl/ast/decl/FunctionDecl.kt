@@ -10,6 +10,8 @@ import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Def
+import org.jetbrains.research.libsl.resolve.Entity
 
 data class FunctionDecl(
     override var location: Location?,
@@ -23,4 +25,6 @@ data class FunctionDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl
+) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Entity<FunctionDecl> {
+    override lateinit var primaryDef: Def.Primary<FunctionDecl>
+}

@@ -7,10 +7,15 @@ import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Def
+import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.type.Type
 
-sealed class SemanticTypeDecl : GlobalDecl, Annotatable {
+sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
     abstract var typeName: QualifiedTypeName
     abstract var realType: TypeExpr
+
+    override lateinit var primaryDef: Def.Primary<Type>
 
     data class Simple(
         override var location: Location?,

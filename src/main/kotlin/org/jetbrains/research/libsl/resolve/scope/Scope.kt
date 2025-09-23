@@ -6,6 +6,7 @@ import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
 import org.jetbrains.research.libsl.ast.decl.FunctionDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
+import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.type.AnyType
 import org.jetbrains.research.libsl.type.BoolType
@@ -54,58 +55,93 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     override fun resolveActionLocally(name: String): Def<ActionDecl>? = actions[name]
 
     sealed interface DefinitionResult<T> {
-        data class Success<T>(val def: Def<T>) : DefinitionResult<T>
+        data class Success<T>(val def: Def.Primary<T>) : DefinitionResult<T>
         data class Conflict<T>(val previousDef: Def<T>) : DefinitionResult<T>
     }
 
-    private fun <T> MutableMap<String, Def<T>>.define(name: String, def: Def<T>): DefinitionResult<T> {
-        val previousDef = get(name)
+    sealed interface AliasResult<T> {
+        data class Success<T>(val def: Def.Alias<T>) : AliasResult<T>
+        data class Conflict<T>(val previousDef: Def<T>) : AliasResult<T>
+    }
+
+    private inline fun <T, D : Def<T>, R> MutableMap<String, Def<T>>.addDef(
+        def: D,
+        onSuccess: (D) -> R,
+        onConflict: (Def<T>) -> R,
+    ): R {
+        val previousDef = get(def.name)
 
         return if (
             previousDef == null
             // aliases can override previous aliases as long as they resolve to the same primary def
             || previousDef.isAlias() && def.isAlias() && previousDef.primary === def.primary
         ) {
-            put(name, def)
+            put(def.name, def)
 
-            DefinitionResult.Success(def)
+            onSuccess(def)
         } else {
-            DefinitionResult.Conflict(previousDef)
+            onConflict(previousDef)
         }
     }
 
-    private fun <T> MutableMap<String, Def<T>>.define(name: String, entity: T): DefinitionResult<T> =
-        define(name, Def.Primary(this@MutableScope, name, entity))
+    private fun <T> MutableMap<String, Def<T>>.define(
+        name: String,
+        location: Location?,
+        entity: T,
+    ): DefinitionResult<T> = addDef(
+        Def.Primary(this@MutableScope, name, location, entity),
+        onSuccess = { DefinitionResult.Success(it) },
+        onConflict = { DefinitionResult.Conflict(it) },
+    )
 
-    fun define(name: String, type: Type): DefinitionResult<Type> = types.define(name, type)
-    fun define(name: String, decl: AutomatonDecl): DefinitionResult<AutomatonDecl> = automata.define(name, decl)
-    fun define(name: String, decl: FunctionDecl): DefinitionResult<FunctionDecl> = functions.define(name, decl)
-    fun define(name: String, decl: VariableDecl): DefinitionResult<VariableDecl> = variables.define(name, decl)
-    fun define(name: String, decl: AnnotationDecl): DefinitionResult<AnnotationDecl> = annotations.define(name, decl)
-    fun define(name: String, decl: ActionDecl): DefinitionResult<ActionDecl> = actions.define(name, decl)
+    private fun <T> MutableMap<String, Def<T>>.alias(name: String, location: Location?, def: Def<T>): AliasResult<T> =
+        addDef(
+            Def.Alias(this@MutableScope, name, location, def),
+            onSuccess = { AliasResult.Success(it) },
+            onConflict = { AliasResult.Conflict(it) },
+        )
 
-    fun alias(name: String, def: Def<Type>): DefinitionResult<Type> = types.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, type: Type): DefinitionResult<Type> =
+        types.define(name, location, type)
 
-    fun alias(name: String, def: Def<AutomatonDecl>): DefinitionResult<AutomatonDecl> =
-        automata.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, decl: AutomatonDecl): DefinitionResult<AutomatonDecl> =
+        automata.define(name, location, decl)
 
-    fun alias(name: String, def: Def<FunctionDecl>): DefinitionResult<FunctionDecl> =
-        functions.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, decl: FunctionDecl): DefinitionResult<FunctionDecl> =
+        functions.define(name, location, decl)
 
-    fun alias(name: String, def: Def<VariableDecl>): DefinitionResult<VariableDecl> =
-        variables.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, decl: VariableDecl): DefinitionResult<VariableDecl> =
+        variables.define(name, location, decl)
 
-    fun alias(name: String, def: Def<AnnotationDecl>): DefinitionResult<AnnotationDecl> =
-        annotations.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, decl: AnnotationDecl): DefinitionResult<AnnotationDecl> =
+        annotations.define(name, location, decl)
 
-    fun alias(name: String, def: Def<ActionDecl>): DefinitionResult<ActionDecl> =
-        actions.define(name, Def.Alias(this, name, def))
+    fun define(name: String, location: Location?, decl: ActionDecl): DefinitionResult<ActionDecl> =
+        actions.define(name, location, decl)
+
+    fun aliasType(name: String, location: Location?, def: Def<Type>): AliasResult<Type> =
+        types.alias(name, location, def)
+
+    fun aliasAutomaton(name: String, location: Location?, def: Def<AutomatonDecl>): AliasResult<AutomatonDecl> =
+        automata.alias(name, location, def)
+
+    fun aliasFunction(name: String, location: Location?, def: Def<FunctionDecl>): AliasResult<FunctionDecl> =
+        functions.alias(name, location, def)
+
+    fun aliasVariable(name: String, location: Location?, def: Def<VariableDecl>): AliasResult<VariableDecl> =
+        variables.alias(name, location, def)
+
+    fun aliasAnnotation(name: String, location: Location?, def: Def<AnnotationDecl>): AliasResult<AnnotationDecl> =
+        annotations.alias(name, location, def)
+
+    fun aliasAction(name: String, location: Location?, def: Def<ActionDecl>): AliasResult<ActionDecl> =
+        actions.alias(name, location, def)
 }
 
 object GlobalScope : Scope(null, null) {
     private val types = buildMap {
         fun put(name: String, type: Type) {
-            put(name, Def.Primary(GlobalScope, name, type))
+            put(name, Def.Primary(GlobalScope, name, location = null, type))
         }
 
         put("int8", IntType(IntType.Width.I8, signed = true))
@@ -149,28 +185,43 @@ class ModuleScope private constructor(
         data class Conflict<T>(val previousDef: Def.Alias<T>, val previousDefModule: Module) : ImportResult<T>
     }
 
-    private fun <T> DefinitionResult<T>.toImportResult(): ImportResult<T> = when (this) {
-        is DefinitionResult.Success -> ImportResult.Success(this.def as Def.Alias)
+    private fun <T> AliasResult<T>.toImportResult(): ImportResult<T> = when (this) {
+        is AliasResult.Success -> ImportResult.Success(this.def)
 
-        is DefinitionResult.Conflict -> {
-            val previousDef = this.previousDef as Def.Alias
+        is AliasResult.Conflict -> {
+            val previousDef = this.previousDef as Def.Alias<T>
             val previousDefScope = previousDef.def.scope as ModuleScope
 
             ImportResult.Conflict(previousDef, previousDefScope.module)
         }
     }
 
-    private fun <T> import(alias: ModuleScope.(String, Def<T>) -> DefinitionResult<T>, def: Def<T>): ImportResult<T> {
+    private fun <T> import(
+        alias: ModuleScope.(String, Location?, Def<T>) -> AliasResult<T>,
+        location: Location?,
+        def: Def<T>,
+    ): ImportResult<T> {
         require(def.scope is ModuleScope) { "imported def must come from a module scope" }
         val name = def.name
 
-        return alias(name, def).toImportResult()
+        return alias(name, location, def).toImportResult()
     }
 
-    fun import(def: Def<Type>): ImportResult<Type> = import(ModuleScope::alias, def)
-    fun import(def: Def<AutomatonDecl>): ImportResult<AutomatonDecl> = import(ModuleScope::alias, def)
-    fun import(def: Def<FunctionDecl>): ImportResult<FunctionDecl> = import(ModuleScope::alias, def)
-    fun import(def: Def<VariableDecl>): ImportResult<VariableDecl> = import(ModuleScope::alias, def)
-    fun import(def: Def<AnnotationDecl>): ImportResult<AnnotationDecl> = import(ModuleScope::alias, def)
-    fun import(def: Def<ActionDecl>): ImportResult<ActionDecl> = import(ModuleScope::alias, def)
+    fun importType(location: Location?, def: Def<Type>): ImportResult<Type> =
+        import(ModuleScope::aliasType, location, def)
+
+    fun importAutomaton(location: Location?, def: Def<AutomatonDecl>): ImportResult<AutomatonDecl> =
+        import(ModuleScope::aliasAutomaton, location, def)
+
+    fun importFunction(location: Location?, def: Def<FunctionDecl>): ImportResult<FunctionDecl> =
+        import(ModuleScope::aliasFunction, location, def)
+
+    fun importVariable(location: Location?, def: Def<VariableDecl>): ImportResult<VariableDecl> =
+        import(ModuleScope::aliasVariable, location, def)
+
+    fun importAnnotation(location: Location?, def: Def<AnnotationDecl>): ImportResult<AnnotationDecl> =
+        import(ModuleScope::aliasAnnotation, location, def)
+
+    fun importAction(location: Location?, def: Def<ActionDecl>): ImportResult<ActionDecl> =
+        import(ModuleScope::aliasAction, location, def)
 }

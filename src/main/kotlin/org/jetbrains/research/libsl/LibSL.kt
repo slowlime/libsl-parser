@@ -26,7 +26,7 @@ class LibSL(private val fileLoader: FileLoader) {
         data class Loaded(override val file: LoadedFile, val module: Module) : ModuleState
     }
 
-    internal data class ModuleLoadRequest(internal var state: ModuleState)
+    internal data class ModuleLoadRequest(var state: ModuleState, val onLoaded: (Module) -> Unit)
 
     private val requestsByPath = mutableMapOf<CanonicalPath, ModuleLoadRequest>()
     private val requestQueue = ArrayDeque<ModuleLoadRequest>()
@@ -47,12 +47,12 @@ class LibSL(private val fileLoader: FileLoader) {
         return LoadResult.Ok(state.module)
     }
 
-    internal fun requestLoad(path: String, loadChain: LoadChain?): ModuleLoadRequest {
+    internal fun requestLoad(path: String, loadChain: LoadChain?, onLoaded: (Module) -> Unit = {}): ModuleLoadRequest {
         val loadChain = loadChain ?: LoadChain.TopLevel(path)
         val file = fileLoader.load(path)
 
         return requestsByPath.getOrPut(file.canonicalPath) {
-            ModuleLoadRequest(ModuleState.InProgress(file, loadChain))
+            ModuleLoadRequest(ModuleState.InProgress(file, loadChain), onLoaded)
                 .also { requestQueue += it }
         }
     }
@@ -69,6 +69,7 @@ class LibSL(private val fileLoader: FileLoader) {
             }
 
             request.state = ModuleState.Loaded(state.file, module)
+            request.onLoaded(module)
         }
 
         return null

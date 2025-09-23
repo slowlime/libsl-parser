@@ -6,6 +6,8 @@ import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Def
+import org.jetbrains.research.libsl.resolve.Entity
 
 data class AutomatonDecl(
     override var location: Location?,
@@ -16,4 +18,6 @@ data class AutomatonDecl(
     var typeExpr: TypeExpr,
     var implementedConcepts: MutableList<Name>,
     var decls: MutableList<AutomatonMemberDecl>
-) : GlobalDecl, Annotatable
+) : GlobalDecl, Annotatable, Entity<AutomatonDecl> {
+    override lateinit var primaryDef: Def.Primary<AutomatonDecl>
+}
