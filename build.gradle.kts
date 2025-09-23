@@ -36,7 +36,7 @@ tasks.withType<KotlinCompile> {
 tasks.generateGrammarSource {
     maxHeapSize = "64m"
     outputDirectory =
-        project.layout.buildDirectory.asFile.get().resolve("/generated-src/antlr/main/org/jetbrains/research/libsl")
+        project.layout.buildDirectory.asFile.get().resolve("generated-src/antlr/main/org/jetbrains/research/libsl")
     arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages", "-package", "${project.group}.libsl")
 }
 
