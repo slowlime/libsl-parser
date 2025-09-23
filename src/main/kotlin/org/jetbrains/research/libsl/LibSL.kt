@@ -3,11 +3,12 @@ package org.jetbrains.research.libsl
 import org.antlr.v4.runtime.ANTLRErrorListener
 import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.exception.LibSLException
-import org.jetbrains.research.libsl.location.CanonicalPath
 import org.jetbrains.research.libsl.file.FileLoader
 import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.load.ModuleLoader
+import org.jetbrains.research.libsl.location.CanonicalPath
 import org.jetbrains.research.libsl.location.LoadChain
+import org.jetbrains.research.libsl.resolve.ModuleResolver
 import java.nio.file.Path
 
 class LibSL(private val fileLoader: FileLoader) {
@@ -71,5 +72,9 @@ class LibSL(private val fileLoader: FileLoader) {
         }
 
         return null
+    }
+
+    fun resolve(module: Module) {
+        ModuleResolver(this, module).resolve()
     }
 }

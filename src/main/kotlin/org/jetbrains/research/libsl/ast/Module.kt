@@ -3,9 +3,13 @@ package org.jetbrains.research.libsl.ast
 import org.jetbrains.research.libsl.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.location.LocationProvider
+import org.jetbrains.research.libsl.resolve.scope.ModuleScope
+import org.jetbrains.research.libsl.resolve.scope.Scoped
 
 data class Module(
     override var location: Location?,
     var header: Header?,
-    var decls: List<GlobalDecl>,
-) : LocationProvider
+    var decls: MutableList<GlobalDecl>,
+) : LocationProvider, Scoped {
+    override val scope = ModuleScope(this)
+}
