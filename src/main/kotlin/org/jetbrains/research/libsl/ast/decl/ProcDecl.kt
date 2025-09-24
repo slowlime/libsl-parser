@@ -11,6 +11,7 @@ import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 
 data class ProcDecl(
     override var location: Location?,
@@ -22,7 +23,10 @@ data class ProcDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLike, StructMemberDecl, AutomatonMemberDecl
+) : FunctionLike, StructMemberDecl, AutomatonMemberDecl {
+    // TODO: implement Entity<...>
+    lateinit var paramScope: MutableScope
+}
 
 fun ProcDecl.walk(visitor: Visitor) {
     for (annotation in annotations) {

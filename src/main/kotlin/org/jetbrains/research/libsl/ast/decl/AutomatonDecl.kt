@@ -9,6 +9,7 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 
 data class AutomatonDecl(
     override var location: Location?,
@@ -21,6 +22,7 @@ data class AutomatonDecl(
     var decls: MutableList<AutomatonMemberDecl>
 ) : GlobalDecl, Annotatable, Entity<AutomatonDecl> {
     override lateinit var primaryDef: Def.Primary<AutomatonDecl>
+    lateinit var scope: MutableScope
 }
 
 fun AutomatonDecl.walk(visitor: Visitor) {

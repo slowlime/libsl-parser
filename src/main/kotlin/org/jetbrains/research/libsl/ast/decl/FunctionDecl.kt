@@ -14,6 +14,7 @@ import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 
 data class FunctionDecl(
     override var location: Location?,
@@ -29,6 +30,11 @@ data class FunctionDecl(
     override var body: FunctionBody?,
 ) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Entity<FunctionDecl> {
     override lateinit var primaryDef: Def.Primary<FunctionDecl>
+    internal val primaryDefInitialized: Boolean
+        get() = this::primaryDef.isInitialized
+
+    lateinit var paramScope: MutableScope
+    var resolvedExtensionFor: Def<AutomatonDecl>? = null
 }
 
 fun FunctionDecl.walk(visitor: Visitor) {

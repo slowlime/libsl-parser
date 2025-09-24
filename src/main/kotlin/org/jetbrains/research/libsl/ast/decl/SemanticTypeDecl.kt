@@ -8,8 +8,10 @@ import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 import org.jetbrains.research.libsl.type.Type
 
 sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
@@ -23,7 +25,9 @@ sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
         override var annotations: MutableList<LibSLAnnotation>,
         override var typeName: QualifiedTypeName,
         override var realType: TypeExpr,
-    ) : SemanticTypeDecl()
+    ) : SemanticTypeDecl() {
+        lateinit var scope: MutableScope
+    }
 
     data class Enumerated(
         override var location: Location?,
@@ -31,9 +35,13 @@ sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
         override var typeName: QualifiedTypeName,
         override var realType: TypeExpr,
         var values: MutableList<Value>,
-    ) : SemanticTypeDecl()
+    ) : SemanticTypeDecl() {
+        lateinit var scope: MutableScope
+    }
 
-    data class Value(var name: Name, var expr: Expr)
+    data class Value(var name: Name, var expr: Expr) : Entity<Binding> {
+        override lateinit var primaryDef: Def.Primary<Binding>
+    }
 }
 
 fun SemanticTypeDecl.walk(visitor: Visitor) {

@@ -13,12 +13,17 @@ import org.jetbrains.research.libsl.ast.contract.walk
 import org.jetbrains.research.libsl.ast.decl.ActionDecl
 import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
+import org.jetbrains.research.libsl.ast.decl.ConstructorDecl
 import org.jetbrains.research.libsl.ast.decl.Decl
+import org.jetbrains.research.libsl.ast.decl.DestructorDecl
 import org.jetbrains.research.libsl.ast.decl.EnumDecl
 import org.jetbrains.research.libsl.ast.decl.FunctionDecl
 import org.jetbrains.research.libsl.ast.decl.ImportDecl
 import org.jetbrains.research.libsl.ast.decl.IncludeDecl
+import org.jetbrains.research.libsl.ast.decl.ProcDecl
 import org.jetbrains.research.libsl.ast.decl.SemanticTypeDecl
+import org.jetbrains.research.libsl.ast.decl.ShiftDecl
+import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
@@ -106,6 +111,24 @@ abstract class Visitor {
     }
 
     open fun visit(decl: VariableDecl) {
+        decl.walk(this)
+    }
+
+    open fun visit(decl: StateDecl) {}
+
+    open fun visit(decl: ShiftDecl) {
+        decl.walk(this)
+    }
+
+    open fun visit(decl: ConstructorDecl) {
+        decl.walk(this)
+    }
+
+    open fun visit(decl: DestructorDecl) {
+        decl.walk(this)
+    }
+
+    open fun visit(decl: ProcDecl) {
         decl.walk(this)
     }
 

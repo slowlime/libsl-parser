@@ -8,6 +8,7 @@ import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 import org.jetbrains.research.libsl.type.Type
 
 data class TypeAliasDecl(
@@ -17,6 +18,7 @@ data class TypeAliasDecl(
     var typeExpr: TypeExpr,
 ) : GlobalDecl, Annotatable, Entity<Type> {
     override lateinit var primaryDef: Def.Primary<Type>
+    lateinit var scope: MutableScope
 }
 
 fun TypeAliasDecl.walk(visitor: Visitor) {

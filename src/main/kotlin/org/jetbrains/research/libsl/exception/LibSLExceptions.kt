@@ -63,3 +63,49 @@ class ConflictingImportException(
         )
     }
 }
+
+class ConflictingParamNameException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+    val previousLocation: Location?,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    companion object {
+        fun fromName(
+            name: String,
+            location: Location?,
+            previousLocation: Location?,
+        ): ConflictingParamNameException = ConflictingParamNameException(
+            location,
+            "parameter `$name` is defined multiple times",
+            "parameter `$name` (${location.inAt()}) conflicts with a previous parameter (${previousLocation.inAt()})",
+            previousLocation,
+        )
+    }
+}
+
+class UnresolvedReference(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    companion object {
+        fun toAutomaton(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
+            location,
+            "unresolved automaton reference `$name`",
+            "unresolved automaton reference `$name` (${location.inAt()})",
+        )
+
+        fun toTypeParamInConstraint(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
+            location,
+            "`$name` does not resolve to a type parameter",
+            "`$name` (${location.inAt()}) does not resolve to a type parameter",
+        )
+
+        fun toState(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
+            location,
+            "state `$name` has not been declared",
+            "state `$name` (${location.inAt()}) has not been declared in this automaton",
+        )
+    }
+}

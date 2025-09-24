@@ -5,8 +5,9 @@ import org.jetbrains.research.libsl.ast.decl.ActionDecl
 import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
 import org.jetbrains.research.libsl.ast.decl.FunctionDecl
-import org.jetbrains.research.libsl.ast.decl.VariableDecl
+import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.type.AnyType
 import org.jetbrains.research.libsl.type.BoolType
@@ -22,37 +23,52 @@ abstract class Scope(val parent: Scope?, val resolutionParent: Scope? = parent) 
     abstract fun resolveTypeLocally(name: String): Def<Type>?
     abstract fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>?
     abstract fun resolveFunctionLocally(name: String): Def<FunctionDecl>?
-    abstract fun resolveVariableLocally(name: String): Def<VariableDecl>?
+    abstract fun resolveBindingLocally(name: String): Def<Binding>?
     abstract fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>?
     abstract fun resolveActionLocally(name: String): Def<ActionDecl>?
+    abstract fun resolveStateLocally(name: String): Def<StateDecl>?
 
     protected open fun <T> resolveRecursively(name: String, resolveLocally: Scope.(String) -> T?): T? =
         resolveLocally(name) ?: resolutionParent?.resolveRecursively(name, resolveLocally)
 
-    fun resolveType(name: String): Def<Type>? = resolveRecursively(name, Scope::resolveTypeLocally)
-    fun resolveAutomaton(name: String): Def<AutomatonDecl>? = resolveRecursively(name, Scope::resolveAutomatonLocally)
-    fun resolveFunction(name: String): Def<FunctionDecl>? = resolveRecursively(name, Scope::resolveFunctionLocally)
-    fun resolveVariable(name: String): Def<VariableDecl>? = resolveRecursively(name, Scope::resolveVariableLocally)
+    fun resolveType(name: String): Def<Type>? =
+        resolveRecursively(name, Scope::resolveTypeLocally)
+
+    fun resolveAutomaton(name: String): Def<AutomatonDecl>? =
+        resolveRecursively(name, Scope::resolveAutomatonLocally)
+
+    fun resolveFunction(name: String): Def<FunctionDecl>? =
+        resolveRecursively(name, Scope::resolveFunctionLocally)
+
+    fun resolveBinding(name: String): Def<Binding>? =
+        resolveRecursively(name, Scope::resolveBindingLocally)
+
     fun resolveAnnotation(name: String): Def<AnnotationDecl>? =
         resolveRecursively(name, Scope::resolveAnnotationLocally)
 
-    fun resolveAction(name: String): Def<ActionDecl>? = resolveRecursively(name, Scope::resolveActionLocally)
+    fun resolveAction(name: String): Def<ActionDecl>? =
+        resolveRecursively(name, Scope::resolveActionLocally)
+
+    fun resolveState(name: String): Def<StateDecl>? =
+        resolveRecursively(name, Scope::resolveStateLocally)
 }
 
 open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Scope(parent, resolutionParent) {
     val types = mutableMapOf<String, Def<Type>>()
     val automata = mutableMapOf<String, Def<AutomatonDecl>>()
     val functions = mutableMapOf<String, Def<FunctionDecl>>()
-    val variables = mutableMapOf<String, Def<VariableDecl>>()
+    val bindings = mutableMapOf<String, Def<Binding>>()
     val annotations = mutableMapOf<String, Def<AnnotationDecl>>()
     val actions = mutableMapOf<String, Def<ActionDecl>>()
+    val states = mutableMapOf<String, Def<StateDecl>>()
 
     override fun resolveTypeLocally(name: String): Def<Type>? = types[name]
     override fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>? = automata[name]
     override fun resolveFunctionLocally(name: String): Def<FunctionDecl>? = functions[name]
-    override fun resolveVariableLocally(name: String): Def<VariableDecl>? = variables[name]
+    override fun resolveBindingLocally(name: String): Def<Binding>? = bindings[name]
     override fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>? = annotations[name]
     override fun resolveActionLocally(name: String): Def<ActionDecl>? = actions[name]
+    override fun resolveStateLocally(name: String): Def<StateDecl>? = states[name]
 
     sealed interface DefinitionResult<T> {
         data class Success<T>(val def: Def.Primary<T>) : DefinitionResult<T>
@@ -114,14 +130,17 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     fun define(name: String, location: Location?, decl: FunctionDecl): DefinitionResult<FunctionDecl> =
         functions.define(name, location, decl)
 
-    fun define(name: String, location: Location?, decl: VariableDecl): DefinitionResult<VariableDecl> =
-        variables.define(name, location, decl)
+    fun define(name: String, location: Location?, decl: Binding): DefinitionResult<Binding> =
+        bindings.define(name, location, decl)
 
     fun define(name: String, location: Location?, decl: AnnotationDecl): DefinitionResult<AnnotationDecl> =
         annotations.define(name, location, decl)
 
     fun define(name: String, location: Location?, decl: ActionDecl): DefinitionResult<ActionDecl> =
         actions.define(name, location, decl)
+
+    fun define(name: String, location: Location?, decl: StateDecl): DefinitionResult<StateDecl> =
+        states.define(name, location, decl)
 
     fun aliasType(name: String, location: Location?, def: Def<Type>): AliasResult<Type> =
         types.alias(name, location, def)
@@ -132,8 +151,8 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     fun aliasFunction(name: String, location: Location?, def: Def<FunctionDecl>): AliasResult<FunctionDecl> =
         functions.alias(name, location, def)
 
-    fun aliasVariable(name: String, location: Location?, def: Def<VariableDecl>): AliasResult<VariableDecl> =
-        variables.alias(name, location, def)
+    fun aliasBinding(name: String, location: Location?, def: Def<Binding>): AliasResult<Binding> =
+        bindings.alias(name, location, def)
 
     fun aliasAnnotation(name: String, location: Location?, def: Def<AnnotationDecl>): AliasResult<AnnotationDecl> =
         annotations.alias(name, location, def)
@@ -173,9 +192,10 @@ object GlobalScope : Scope(null, null) {
     override fun resolveTypeLocally(name: String): Def<Type>? = types[name]
     override fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>? = null
     override fun resolveFunctionLocally(name: String): Def<FunctionDecl>? = null
-    override fun resolveVariableLocally(name: String): Def<VariableDecl>? = null
+    override fun resolveBindingLocally(name: String): Def<Binding>? = null
     override fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>? = null
     override fun resolveActionLocally(name: String): Def<ActionDecl>? = null
+    override fun resolveStateLocally(name: String): Def<StateDecl>? = null
 }
 
 class ModuleScope private constructor(
@@ -220,8 +240,8 @@ class ModuleScope private constructor(
     fun importFunction(location: Location?, def: Def<FunctionDecl>): ImportResult<FunctionDecl> =
         import(ModuleScope::aliasFunction, location, def)
 
-    fun importVariable(location: Location?, def: Def<VariableDecl>): ImportResult<VariableDecl> =
-        import(ModuleScope::aliasVariable, location, def)
+    fun importBinding(location: Location?, def: Def<Binding>): ImportResult<Binding> =
+        import(ModuleScope::aliasBinding, location, def)
 
     fun importAnnotation(location: Location?, def: Def<AnnotationDecl>): ImportResult<AnnotationDecl> =
         import(ModuleScope::aliasAnnotation, location, def)

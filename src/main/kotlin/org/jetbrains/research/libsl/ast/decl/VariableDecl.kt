@@ -7,6 +7,7 @@ import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
 
@@ -17,8 +18,10 @@ data class VariableDecl(
     var name: Name,
     var typeExpr: TypeExpr,
     var init: Expr?,
-) : GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Annotatable, Entity<VariableDecl> {
-    override lateinit var primaryDef: Def.Primary<VariableDecl>
+) : GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Annotatable, Entity<Binding> {
+    override lateinit var primaryDef: Def.Primary<Binding>
+    internal val primaryDefInitialized: Boolean
+        get() = this::primaryDef.isInitialized
 }
 
 fun VariableDecl.walk(visitor: Visitor) {

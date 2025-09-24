@@ -6,9 +6,11 @@ import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
+import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 import org.jetbrains.research.libsl.type.Type
 
 data class StructDecl(
@@ -21,6 +23,7 @@ data class StructDecl(
     var decls: MutableList<StructMemberDecl>,
 ) : GlobalDecl, Annotatable, Entity<Type> {
     override lateinit var primaryDef: Def.Primary<Type>
+    lateinit var scope: MutableScope
 }
 
 fun StructDecl.walk(visitor: Visitor) {

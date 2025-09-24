@@ -9,6 +9,7 @@ import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 
 data class DestructorDecl(
     override var location: Location?,
@@ -18,7 +19,10 @@ data class DestructorDecl(
     override var params: MutableList<FunctionParam>,
     override var returnType: TypeExpr?,
     override var body: FunctionBody?,
-) : FunctionLike, AutomatonMemberDecl
+) : FunctionLike, AutomatonMemberDecl {
+    // TODO: implement Entity<...>
+    lateinit var paramScope: MutableScope
+}
 
 fun DestructorDecl.walk(visitor: Visitor) {
     for (annotation in annotations) {

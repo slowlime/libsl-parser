@@ -7,9 +7,12 @@ import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
+import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
+import org.jetbrains.research.libsl.resolve.scope.MutableScope
 
 class ActionDecl(
     override var location: Location?,
@@ -24,9 +27,12 @@ class ActionDecl(
         override var annotations: MutableList<LibSLAnnotation>,
         var name: Name,
         var typeExpr: TypeExpr,
-    ) : Annotatable
+    ) : Annotatable, Entity<Binding> {
+        override lateinit var primaryDef: Def.Primary<Binding>
+    }
 
     override lateinit var primaryDef: Def.Primary<ActionDecl>
+    lateinit var paramScope: MutableScope
 }
 
 fun ActionDecl.walk(visitor: Visitor) {
