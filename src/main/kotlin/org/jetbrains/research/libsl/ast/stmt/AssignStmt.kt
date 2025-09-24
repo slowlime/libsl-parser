@@ -1,5 +1,6 @@
 package org.jetbrains.research.libsl.ast.stmt
 
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.access.Access
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
@@ -22,4 +23,9 @@ data class AssignStmt(
         LShift,
         RShift,
     }
+}
+
+fun AssignStmt.walk(visitor: Visitor) {
+    visitor.visit(lhs)
+    visitor.visit(rhs)
 }

@@ -6,4 +6,8 @@ data class TypeConstraint(
     var param: Name,
     var variance: Variance?,
     var bound: TypeArg,
-)
+) {
+    fun walk(visitor: Visitor) {
+        visitor.visit(bound)
+    }
+}

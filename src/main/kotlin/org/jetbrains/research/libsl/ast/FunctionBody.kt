@@ -7,3 +7,13 @@ data class FunctionBody(
     var contracts: MutableList<Contract>,
     var stmts: MutableList<Stmt>
 )
+
+fun FunctionBody.walk(visitor: Visitor) {
+    for (contract in contracts) {
+        visitor.visit(contract)
+    }
+
+    for (stmt in stmts) {
+        visitor.visit(stmt)
+    }
+}

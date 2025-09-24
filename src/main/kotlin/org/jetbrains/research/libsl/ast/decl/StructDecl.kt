@@ -4,6 +4,7 @@ import org.jetbrains.research.libsl.ast.Annotatable
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
 import org.jetbrains.research.libsl.ast.TypeConstraint
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
@@ -20,4 +21,24 @@ data class StructDecl(
     var decls: MutableList<StructMemberDecl>,
 ) : GlobalDecl, Annotatable, Entity<Type> {
     override lateinit var primaryDef: Def.Primary<Type>
+}
+
+fun StructDecl.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    isType?.let(visitor::visit)
+
+    for (type in forTypes) {
+        visitor.visit(type)
+    }
+
+    for (typeConstraint in typeConstraints) {
+        typeConstraint.walk(visitor)
+    }
+
+    for (decl in decls) {
+        visitor.visit(decl)
+    }
 }

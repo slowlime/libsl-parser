@@ -3,6 +3,7 @@ package org.jetbrains.research.libsl.ast.decl
 import org.jetbrains.research.libsl.ast.Annotatable
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
@@ -16,4 +17,12 @@ data class TypeAliasDecl(
     var typeExpr: TypeExpr,
 ) : GlobalDecl, Annotatable, Entity<Type> {
     override lateinit var primaryDef: Def.Primary<Type>
+}
+
+fun TypeAliasDecl.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    visitor.visit(typeExpr)
 }

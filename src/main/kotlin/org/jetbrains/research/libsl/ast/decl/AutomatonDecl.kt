@@ -4,6 +4,7 @@ import org.jetbrains.research.libsl.ast.Annotatable
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
@@ -20,4 +21,20 @@ data class AutomatonDecl(
     var decls: MutableList<AutomatonMemberDecl>
 ) : GlobalDecl, Annotatable, Entity<AutomatonDecl> {
     override lateinit var primaryDef: Def.Primary<AutomatonDecl>
+}
+
+fun AutomatonDecl.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    for (variable in constructorVariables) {
+        visitor.visit(variable)
+    }
+
+    visitor.visit(typeExpr)
+
+    for (decl in decls) {
+        visitor.visit(decl)
+    }
 }

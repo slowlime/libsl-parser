@@ -14,3 +14,13 @@ data class LibSLAnnotation(
         var expr: Expr,
     )
 }
+
+fun LibSLAnnotation.walk(visitor: Visitor) {
+    for (arg in args) {
+        arg.walk(visitor)
+    }
+}
+
+fun LibSLAnnotation.Arg.walk(visitor: Visitor) {
+    visitor.visit(expr)
+}

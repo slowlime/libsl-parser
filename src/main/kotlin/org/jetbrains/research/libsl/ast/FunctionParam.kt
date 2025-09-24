@@ -7,3 +7,11 @@ data class FunctionParam(
     var name: Name,
     var typeExpr: TypeExpr,
 ) : Annotatable
+
+fun FunctionParam.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    visitor.visit(typeExpr)
+}

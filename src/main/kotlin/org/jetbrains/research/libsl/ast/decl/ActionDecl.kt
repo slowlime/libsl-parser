@@ -1,10 +1,11 @@
 package org.jetbrains.research.libsl.ast.decl
 
 import org.jetbrains.research.libsl.ast.Annotatable
-import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Generic
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
@@ -26,4 +27,28 @@ class ActionDecl(
     ) : Annotatable
 
     override lateinit var primaryDef: Def.Primary<ActionDecl>
+}
+
+fun ActionDecl.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    for (param in params) {
+        param.walk(visitor)
+    }
+
+    returnType?.let(visitor::visit)
+
+    for (typeConstraint in typeConstraints) {
+        typeConstraint.walk(visitor)
+    }
+}
+
+fun ActionDecl.Param.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    visitor.visit(typeExpr)
 }

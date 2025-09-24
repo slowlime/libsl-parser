@@ -5,7 +5,9 @@ import org.jetbrains.research.libsl.ast.FunctionBody
 import org.jetbrains.research.libsl.ast.FunctionLike
 import org.jetbrains.research.libsl.ast.FunctionParam
 import org.jetbrains.research.libsl.ast.Name
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.type.TypeExpr
+import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.location.Location
 
 data class ConstructorDecl(
@@ -17,3 +19,16 @@ data class ConstructorDecl(
     override var returnType: TypeExpr?,
     override var body: FunctionBody?,
 ) : FunctionLike, AutomatonMemberDecl
+
+fun ConstructorDecl.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    for (param in params) {
+        param.walk(visitor)
+    }
+
+    returnType?.let(visitor::visit)
+    body?.walk(visitor)
+}

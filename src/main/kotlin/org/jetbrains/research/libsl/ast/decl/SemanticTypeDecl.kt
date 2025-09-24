@@ -4,6 +4,7 @@ import org.jetbrains.research.libsl.ast.Annotatable
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.QualifiedTypeName
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.ast.type.TypeExpr
 import org.jetbrains.research.libsl.location.Location
@@ -33,4 +34,35 @@ sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
     ) : SemanticTypeDecl()
 
     data class Value(var name: Name, var expr: Expr)
+}
+
+fun SemanticTypeDecl.walk(visitor: Visitor) {
+    when (this) {
+        is SemanticTypeDecl.Enumerated -> visitor.visit(this)
+        is SemanticTypeDecl.Simple -> visitor.visit(this)
+    }
+}
+
+fun SemanticTypeDecl.Simple.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    visitor.visit(realType)
+}
+
+fun SemanticTypeDecl.Enumerated.walk(visitor: Visitor) {
+    for (annotation in annotations) {
+        visitor.visit(annotation)
+    }
+
+    visitor.visit(realType)
+
+    for (value in values) {
+        value.walk(visitor)
+    }
+}
+
+fun SemanticTypeDecl.Value.walk(visitor: Visitor) {
+    visitor.visit(expr)
 }

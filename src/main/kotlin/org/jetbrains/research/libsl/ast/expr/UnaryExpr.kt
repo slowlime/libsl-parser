@@ -1,5 +1,6 @@
 package org.jetbrains.research.libsl.ast.expr
 
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.location.Location
 
 data class UnaryExpr(
@@ -13,4 +14,8 @@ data class UnaryExpr(
         BitNot,
         Not,
     }
+}
+
+fun UnaryExpr.walk(visitor: Visitor) {
+    visitor.visit(rhs)
 }

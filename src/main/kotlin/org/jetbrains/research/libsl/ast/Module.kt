@@ -17,3 +17,9 @@ data class Module(
     val imports: MutableList<ImportDecl> = mutableListOf()
     val importedBy: MutableList<Pair<Module, ImportDecl>> = mutableListOf()
 }
+
+fun Module.walk(visitor: Visitor) {
+    for (decl in decls) {
+        visitor.visit(decl)
+    }
+}

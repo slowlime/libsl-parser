@@ -1,5 +1,6 @@
 package org.jetbrains.research.libsl.ast.access
 
+import org.jetbrains.research.libsl.ast.Visitor
 import org.jetbrains.research.libsl.ast.expr.Expr
 import org.jetbrains.research.libsl.location.Location
 
@@ -8,3 +9,7 @@ data class IndexAccess(
     var base: Access,
     var index: Expr,
 ) : Access
+
+fun IndexAccess.walk(visitor: Visitor) {
+    visitor.visit(base)
+}
