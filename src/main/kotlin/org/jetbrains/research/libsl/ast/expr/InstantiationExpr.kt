@@ -3,8 +3,10 @@ package org.jetbrains.research.libsl.ast.expr
 import org.jetbrains.research.libsl.ast.FullName
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.Visitor
+import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
 import org.jetbrains.research.libsl.ast.type.TypeArg
 import org.jetbrains.research.libsl.location.Location
+import org.jetbrains.research.libsl.resolve.Def
 
 data class InstantiationExpr(
     override var location: Location?,
@@ -18,6 +20,8 @@ data class InstantiationExpr(
         data class State(override var value: Expr) : Arg
         data class Var(var name: Name, override var value: Expr) : Arg
     }
+
+    lateinit var resolved: Def<AutomatonDecl>
 }
 
 fun InstantiationExpr.walk(visitor: Visitor) {

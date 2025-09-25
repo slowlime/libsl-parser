@@ -25,6 +25,10 @@ import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
+import org.jetbrains.research.libsl.ast.expr.ActionCallExpr
+import org.jetbrains.research.libsl.ast.expr.InstantiationExpr
+import org.jetbrains.research.libsl.ast.expr.ProcCallExpr
+import org.jetbrains.research.libsl.ast.stmt.IfStmt
 import org.jetbrains.research.libsl.ast.type.NameTypeExpr
 import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.exception.ConflictingDefinitionException
@@ -342,7 +346,15 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
         }
 
         private fun visit(body: FunctionBody, paramScope: Scope) {
-            TODO()
+            body.scope = enter(MutableScope(currentScope, resolutionParent = paramScope)) {
+                for (contract in body.contracts) {
+                    visit(contract)
+                }
+
+                for (stmt in body.stmts) {
+                    visit(stmt)
+                }
+            }
         }
 
         override fun visit(decl: ActionDecl) {
@@ -663,11 +675,42 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
         }
 
         override fun visit(typeExpr: NameTypeExpr) {
-            typeExpr.resolvedTypeName = currentScope
-                .resolveType(typeExpr.typeName.toString())
+            typeExpr.resolvedTypeName = currentScope.resolveType(typeExpr.typeName.toString())
                 ?: throw UnresolvedReferenceException.toType(typeExpr.typeName.toString(), typeExpr.typeName.location)
 
             super.visit(typeExpr)
+        }
+
+        override fun visit(stmt: IfStmt) {
+            visit(stmt.condition)
+
+            stmt.thenScope = enter(MutableScope(currentScope)) {
+                for (stmt in stmt.thenBranch) {
+                    visit(stmt)
+                }
+            }
+
+            stmt.elseScope = enter(MutableScope(currentScope)) {
+                stmt.elseBranch?.let { elseBranch ->
+                    for (stmt in elseBranch) {
+                        visit(stmt)
+                    }
+                }
+            }
+        }
+
+        override fun visit(expr: ActionCallExpr) {
+            expr.resolved = currentScope.resolveAction(expr.name.toString())
+                ?: throw UnresolvedReferenceException.toAction(expr.name.toString(), expr.name.location)
+
+            super.visit(expr)
+        }
+
+        override fun visit(expr: InstantiationExpr) {
+            expr.resolved = currentScope.resolveAutomaton(expr.name.toString())
+                ?: throw UnresolvedReferenceException.toAutomaton(expr.name.toString(), expr.name.location)
+
+            super.visit(expr)
         }
     }
 }

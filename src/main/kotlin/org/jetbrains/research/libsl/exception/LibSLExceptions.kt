@@ -127,6 +127,12 @@ class UnresolvedReferenceException(
             "unresolved reference to type `$name`",
             "unresolved reference to type `$name` (${location.inAt()})",
         )
+
+        fun toAction(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
+            location,
+            "unresolved reference to action `$name`",
+            "unresolved reference to action `$name` (${location.inAt()})",
+        )
     }
 }
 
