@@ -12,7 +12,6 @@ sealed interface Binding {
     data class EnumVariant(val variant: EnumDecl.Variant) : Binding
     data class FunctionParam(val param: org.jetbrains.research.libsl.ast.FunctionParam) : Binding
     data class EnumSemanticTypeValue(val value: SemanticTypeDecl.Value) : Binding
-    data class StateDecl(val decl: org.jetbrains.research.libsl.ast.decl.StateDecl) : Binding
 
     companion object {
         fun of(decl: org.jetbrains.research.libsl.ast.decl.VariableDecl): VariableDecl = VariableDecl(decl)
@@ -21,6 +20,5 @@ sealed interface Binding {
         fun of(variant: EnumDecl.Variant): EnumVariant = EnumVariant(variant)
         fun of(param: org.jetbrains.research.libsl.ast.FunctionParam): FunctionParam = FunctionParam(param)
         fun of(value: SemanticTypeDecl.Value): EnumSemanticTypeValue = EnumSemanticTypeValue(value)
-        fun of(decl: org.jetbrains.research.libsl.ast.decl.StateDecl): StateDecl = StateDecl(decl)
     }
 }

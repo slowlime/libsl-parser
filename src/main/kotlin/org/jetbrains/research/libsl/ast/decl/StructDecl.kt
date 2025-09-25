@@ -11,7 +11,7 @@ import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
-import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeConstructor
 
 data class StructDecl(
     override var location: Location?,
@@ -21,8 +21,8 @@ data class StructDecl(
     var forTypes: MutableList<TypeExpr>,
     var typeConstraints: MutableList<TypeConstraint>,
     var decls: MutableList<StructMemberDecl>,
-) : GlobalDecl, Annotatable, Entity<Type> {
-    override lateinit var primaryDef: Def.Primary<Type>
+) : GlobalDecl, Annotatable, Entity<TypeConstructor> {
+    override lateinit var primaryDef: Def.Primary<TypeConstructor>
     lateinit var scope: MutableScope
 }
 

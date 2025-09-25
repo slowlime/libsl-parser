@@ -4,7 +4,7 @@ import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.ast.decl.ActionDecl
 import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
-import org.jetbrains.research.libsl.ast.decl.FunctionDecl
+import org.jetbrains.research.libsl.ast.decl.FunctionLikeDecl
 import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Binding
@@ -17,12 +17,13 @@ import org.jetbrains.research.libsl.type.IntType
 import org.jetbrains.research.libsl.type.NothingType
 import org.jetbrains.research.libsl.type.StringType
 import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeConstructor
 import org.jetbrains.research.libsl.type.VoidType
 
 abstract class Scope(val parent: Scope?, val resolutionParent: Scope? = parent) {
-    abstract fun resolveTypeLocally(name: String): Def<Type>?
+    abstract fun resolveTypeLocally(name: String): Def<TypeConstructor>?
     abstract fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>?
-    abstract fun resolveFunctionLocally(name: String): Def<FunctionDecl>?
+    abstract fun resolveFunctionLocally(name: String): List<Def<FunctionLikeDecl>>
     abstract fun resolveBindingLocally(name: String): Def<Binding>?
     abstract fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>?
     abstract fun resolveActionLocally(name: String): Def<ActionDecl>?
@@ -31,14 +32,11 @@ abstract class Scope(val parent: Scope?, val resolutionParent: Scope? = parent) 
     protected open fun <T> resolveRecursively(name: String, resolveLocally: Scope.(String) -> T?): T? =
         resolveLocally(name) ?: resolutionParent?.resolveRecursively(name, resolveLocally)
 
-    fun resolveType(name: String): Def<Type>? =
+    fun resolveType(name: String): Def<TypeConstructor>? =
         resolveRecursively(name, Scope::resolveTypeLocally)
 
     fun resolveAutomaton(name: String): Def<AutomatonDecl>? =
         resolveRecursively(name, Scope::resolveAutomatonLocally)
-
-    fun resolveFunction(name: String): Def<FunctionDecl>? =
-        resolveRecursively(name, Scope::resolveFunctionLocally)
 
     fun resolveBinding(name: String): Def<Binding>? =
         resolveRecursively(name, Scope::resolveBindingLocally)
@@ -54,20 +52,27 @@ abstract class Scope(val parent: Scope?, val resolutionParent: Scope? = parent) 
 }
 
 open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Scope(parent, resolutionParent) {
-    val types = mutableMapOf<String, Def<Type>>()
+    val types = mutableMapOf<String, Def<TypeConstructor>>()
     val automata = mutableMapOf<String, Def<AutomatonDecl>>()
-    val functions = mutableMapOf<String, Def<FunctionDecl>>()
+    val functions = mutableMapOf<String, MutableList<Def<FunctionLikeDecl>>>()
     val bindings = mutableMapOf<String, Def<Binding>>()
     val annotations = mutableMapOf<String, Def<AnnotationDecl>>()
     val actions = mutableMapOf<String, Def<ActionDecl>>()
     val states = mutableMapOf<String, Def<StateDecl>>()
 
-    override fun resolveTypeLocally(name: String): Def<Type>? = types[name]
+    override fun resolveTypeLocally(name: String): Def<TypeConstructor>? = types[name]
+
     override fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>? = automata[name]
-    override fun resolveFunctionLocally(name: String): Def<FunctionDecl>? = functions[name]
+
+    override fun resolveFunctionLocally(name: String): MutableList<Def<FunctionLikeDecl>> =
+        functions[name] ?: mutableListOf()
+
     override fun resolveBindingLocally(name: String): Def<Binding>? = bindings[name]
+
     override fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>? = annotations[name]
+
     override fun resolveActionLocally(name: String): Def<ActionDecl>? = actions[name]
+
     override fun resolveStateLocally(name: String): Def<StateDecl>? = states[name]
 
     sealed interface DefinitionResult<T> {
@@ -86,19 +91,21 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
         onIgnored: (Def.Alias<T>) -> R,
         onConflict: (Def<T>) -> R,
     ): R {
-        val previousDef = get(def.name)
+        return when (val previousDef = get(def.name)) {
+            null -> {
+                put(def.name, def)
 
-        return if (previousDef == null) {
-            put(def.name, def)
+                onSuccess(def)
+            }
 
-            onSuccess(def)
-        } else if (
             // as long as they resolve to the same primary def, we ignore duplicate aliases
-            previousDef is Def.Alias && def.isAlias() && previousDef.primary === def.primary
-        ) {
-            onIgnored(previousDef)
-        } else {
-            onConflict(previousDef)
+            is Def.Alias if def.isAlias() && previousDef.primary === def.primary -> {
+                onIgnored(previousDef)
+            }
+
+            else -> {
+                onConflict(previousDef)
+            }
         }
     }
 
@@ -121,14 +128,19 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
             onConflict = { AliasResult.Conflict(it) },
         )
 
-    fun define(name: String, location: Location?, type: Type): DefinitionResult<Type> =
+    fun define(name: String, location: Location?, type: TypeConstructor): DefinitionResult<TypeConstructor> =
         types.define(name, location, type)
 
     fun define(name: String, location: Location?, decl: AutomatonDecl): DefinitionResult<AutomatonDecl> =
         automata.define(name, location, decl)
 
-    fun define(name: String, location: Location?, decl: FunctionDecl): DefinitionResult<FunctionDecl> =
-        functions.define(name, location, decl)
+    fun define(name: String, location: Location?, decl: FunctionLikeDecl): DefinitionResult.Success<FunctionLikeDecl> {
+        val overloads = functions.getOrPut(name, ::mutableListOf)
+        val def = Def.Primary(this, name, location, decl)
+        overloads += def
+
+        return DefinitionResult.Success(def)
+    }
 
     fun define(name: String, location: Location?, decl: Binding): DefinitionResult<Binding> =
         bindings.define(name, location, decl)
@@ -142,14 +154,33 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
     fun define(name: String, location: Location?, decl: StateDecl): DefinitionResult<StateDecl> =
         states.define(name, location, decl)
 
-    fun aliasType(name: String, location: Location?, def: Def<Type>): AliasResult<Type> =
+    fun aliasType(name: String, location: Location?, def: Def<TypeConstructor>): AliasResult<TypeConstructor> =
         types.alias(name, location, def)
 
     fun aliasAutomaton(name: String, location: Location?, def: Def<AutomatonDecl>): AliasResult<AutomatonDecl> =
         automata.alias(name, location, def)
 
-    fun aliasFunction(name: String, location: Location?, def: Def<FunctionDecl>): AliasResult<FunctionDecl> =
-        functions.alias(name, location, def)
+    fun aliasFunction(
+        name: String,
+        location: Location?,
+        def: Def<FunctionLikeDecl>,
+    ): AliasResult.Success<FunctionLikeDecl> {
+        val overloads = functions.getOrPut(name, ::mutableListOf)
+        val def = Def.Alias(this, name, location, def)
+
+        // TODO: linear scan is performed here, which can be improved
+        val existingDef = overloads.asSequence()
+            .mapNotNull { it as? Def.Alias }
+            .find { it.primary === def.primary }
+
+        return if (existingDef == null) {
+            overloads += def
+
+            AliasResult.Success(def, new = true)
+        } else {
+            AliasResult.Success(existingDef, new = false)
+        }
+    }
 
     fun aliasBinding(name: String, location: Location?, def: Def<Binding>): AliasResult<Binding> =
         bindings.alias(name, location, def)
@@ -164,7 +195,7 @@ open class MutableScope(parent: Scope?, resolutionParent: Scope? = parent) : Sco
 object GlobalScope : Scope(null, null) {
     private val types = buildMap {
         fun put(name: String, type: Type) {
-            put(name, Def.Primary(GlobalScope, name, location = null, type))
+            put(name, Def.Primary(GlobalScope, name, location = null, TypeConstructor.Nullary(type)))
         }
 
         put("int8", IntType(IntType.Width.I8, signed = true))
@@ -189,9 +220,9 @@ object GlobalScope : Scope(null, null) {
         put("nothing", NothingType)
     }
 
-    override fun resolveTypeLocally(name: String): Def<Type>? = types[name]
+    override fun resolveTypeLocally(name: String): Def<TypeConstructor>? = types[name]
     override fun resolveAutomatonLocally(name: String): Def<AutomatonDecl>? = null
-    override fun resolveFunctionLocally(name: String): Def<FunctionDecl>? = null
+    override fun resolveFunctionLocally(name: String): List<Def<FunctionLikeDecl>> = listOf()
     override fun resolveBindingLocally(name: String): Def<Binding>? = null
     override fun resolveAnnotationLocally(name: String): Def<AnnotationDecl>? = null
     override fun resolveActionLocally(name: String): Def<ActionDecl>? = null
@@ -231,13 +262,13 @@ class ModuleScope private constructor(
         return alias(name, location, def).toImportResult()
     }
 
-    fun importType(location: Location?, def: Def<Type>): ImportResult<Type> =
+    fun importType(location: Location?, def: Def<TypeConstructor>): ImportResult<TypeConstructor> =
         import(ModuleScope::aliasType, location, def)
 
     fun importAutomaton(location: Location?, def: Def<AutomatonDecl>): ImportResult<AutomatonDecl> =
         import(ModuleScope::aliasAutomaton, location, def)
 
-    fun importFunction(location: Location?, def: Def<FunctionDecl>): ImportResult<FunctionDecl> =
+    fun importFunction(location: Location?, def: Def<FunctionLikeDecl>): ImportResult<FunctionLikeDecl> =
         import(ModuleScope::aliasFunction, location, def)
 
     fun importBinding(location: Location?, def: Def<Binding>): ImportResult<Binding> =

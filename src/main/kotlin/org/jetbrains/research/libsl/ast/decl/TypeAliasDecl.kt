@@ -9,15 +9,15 @@ import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
-import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeConstructor
 
 data class TypeAliasDecl(
     override var location: Location?,
     override var annotations: MutableList<LibSLAnnotation>,
     var typeName: QualifiedTypeName,
     var typeExpr: TypeExpr,
-) : GlobalDecl, Annotatable, Entity<Type> {
-    override lateinit var primaryDef: Def.Primary<Type>
+) : GlobalDecl, Annotatable, Entity<TypeConstructor> {
+    override lateinit var primaryDef: Def.Primary<TypeConstructor>
     lateinit var scope: MutableScope
 }
 

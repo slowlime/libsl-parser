@@ -12,13 +12,13 @@ import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
-import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeConstructor
 
-sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<Type> {
+sealed class SemanticTypeDecl : GlobalDecl, Annotatable, Entity<TypeConstructor> {
     abstract var typeName: QualifiedTypeName
     abstract var realType: TypeExpr
 
-    override lateinit var primaryDef: Def.Primary<Type>
+    override lateinit var primaryDef: Def.Primary<TypeConstructor>
 
     data class Simple(
         override var location: Location?,

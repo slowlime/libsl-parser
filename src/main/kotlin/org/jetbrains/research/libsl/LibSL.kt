@@ -8,7 +8,7 @@ import org.jetbrains.research.libsl.file.LoadedFile
 import org.jetbrains.research.libsl.load.ModuleLoader
 import org.jetbrains.research.libsl.location.CanonicalPath
 import org.jetbrains.research.libsl.location.LoadChain
-import org.jetbrains.research.libsl.resolve.ModuleResolver
+import org.jetbrains.research.libsl.resolve.NameResolver
 import java.nio.file.Path
 
 class LibSL(private val fileLoader: FileLoader) {
@@ -76,6 +76,6 @@ class LibSL(private val fileLoader: FileLoader) {
     }
 
     fun resolve(module: Module) {
-        ModuleResolver(this, module).resolve()
+        NameResolver(this, module).resolve()
     }
 }

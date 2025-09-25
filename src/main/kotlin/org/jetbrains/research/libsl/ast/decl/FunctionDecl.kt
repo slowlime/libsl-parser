@@ -3,7 +3,7 @@ package org.jetbrains.research.libsl.ast.decl
 import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.FullName
 import org.jetbrains.research.libsl.ast.FunctionBody
-import org.jetbrains.research.libsl.ast.FunctionLike
+import org.jetbrains.research.libsl.ast.decl.FunctionLikeDecl
 import org.jetbrains.research.libsl.ast.FunctionParam
 import org.jetbrains.research.libsl.ast.Generic
 import org.jetbrains.research.libsl.ast.Name
@@ -28,11 +28,8 @@ data class FunctionDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLike, GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Entity<FunctionDecl> {
-    override lateinit var primaryDef: Def.Primary<FunctionDecl>
-    internal val primaryDefInitialized: Boolean
-        get() = this::primaryDef.isInitialized
-
+) : FunctionLikeDecl, GlobalDecl, StructMemberDecl, AutomatonMemberDecl, Entity<FunctionLikeDecl> {
+    override lateinit var primaryDef: Def.Primary<FunctionLikeDecl>
     lateinit var paramScope: MutableScope
     var resolvedExtensionFor: Def<AutomatonDecl>? = null
 }

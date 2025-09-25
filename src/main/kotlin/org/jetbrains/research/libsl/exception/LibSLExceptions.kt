@@ -84,28 +84,124 @@ class ConflictingParamNameException(
     }
 }
 
-class UnresolvedReference(
+class UnresolvedReferenceException(
     location: Location?,
     shortMessage: String,
     fullMessage: String,
 ) : LocalizedException(location, shortMessage, fullMessage) {
     companion object {
-        fun toAutomaton(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
+        fun toAutomaton(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved automaton reference `$name`",
             "unresolved automaton reference `$name` (${location.inAt()})",
         )
 
-        fun toTypeParamInConstraint(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
-            location,
-            "`$name` does not resolve to a type parameter",
-            "`$name` (${location.inAt()}) does not resolve to a type parameter",
-        )
+        fun toTypeParamInConstraint(name: String, location: Location?): UnresolvedReferenceException =
+            UnresolvedReferenceException(
+                location,
+                "`$name` does not resolve to a type parameter",
+                "`$name` (${location.inAt()}) does not resolve to a type parameter",
+            )
 
-        fun toState(name: String, location: Location?): UnresolvedReference = UnresolvedReference(
+        fun toState(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "state `$name` has not been declared",
             "state `$name` (${location.inAt()}) has not been declared in this automaton",
         )
+
+        fun toAnnotation(name: String, location: Location?): UnresolvedReferenceException =
+            UnresolvedReferenceException(
+                location,
+                "unresolved annotation reference `$name`",
+                "unresolved annotation reference `$name` (${location.inAt()})",
+            )
+
+        fun toParam(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
+            location,
+            "unresolved reference to param `$name`",
+            "unresolved reference to param `$name` (${location.inAt()})",
+        )
+
+        fun toType(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
+            location,
+            "unresolved reference to type `$name`",
+            "unresolved reference to type `$name` (${location.inAt()})",
+        )
     }
+}
+
+class UnorderedMixedNamedAndUnnamedArgumentsException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    constructor(location: Location?) : this(
+        location,
+        "cannot mix named and unnamed arguments unless they are in the right order",
+        "cannot mix named and unnamed arguments unless they are in the right order (${location.inAt()})",
+    )
+}
+
+class TooManyArgumentsException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+    val argCount: Int,
+    val paramCount: Int,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    constructor(location: Location?, argCount: Int, paramCount: Int) : this(
+        location,
+        "too many arguments: expected $paramCount, found $argCount",
+        "too many arguments: expected $paramCount, found $argCount (${location.inAt()})",
+        argCount,
+        paramCount,
+    )
+}
+
+class TooFewArgumentsException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+    val argCount: Int,
+    val paramCount: Int,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    constructor(location: Location?, argCount: Int, paramCount: Int) : this(
+        location,
+        "too few arguments: expected $paramCount, found $argCount",
+        "too few arguments: expected $paramCount, found $argCount (${location.inAt()})",
+        argCount,
+        paramCount,
+    )
+}
+
+class TooManyTypeArgumentsException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+    val argCount: Int,
+    val paramCount: Int,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    constructor(location: Location?, argCount: Int, paramCount: Int) : this(
+        location,
+        "too many type arguments: expected $paramCount, found $argCount",
+        "too many type arguments: expected $paramCount, found $argCount (${location.inAt()})",
+        argCount,
+        paramCount,
+    )
+}
+
+class TooFewTypeArgumentsException(
+    location: Location?,
+    shortMessage: String,
+    fullMessage: String,
+    val argCount: Int,
+    val paramCount: Int,
+) : LocalizedException(location, shortMessage, fullMessage) {
+    constructor(location: Location?, argCount: Int, paramCount: Int) : this(
+        location,
+        "too few type arguments: expected $paramCount, found $argCount",
+        "too few type arguments: expected $paramCount, found $argCount (${location.inAt()})",
+        argCount,
+        paramCount,
+    )
 }

@@ -4,6 +4,7 @@ import org.jetbrains.research.libsl.LibSL
 import org.jetbrains.research.libsl.ast.FunctionBody
 import org.jetbrains.research.libsl.ast.FunctionParam
 import org.jetbrains.research.libsl.ast.Generic
+import org.jetbrains.research.libsl.ast.LibSLAnnotation
 import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
@@ -24,22 +25,23 @@ import org.jetbrains.research.libsl.ast.decl.StateDecl
 import org.jetbrains.research.libsl.ast.decl.StructDecl
 import org.jetbrains.research.libsl.ast.decl.TypeAliasDecl
 import org.jetbrains.research.libsl.ast.decl.VariableDecl
+import org.jetbrains.research.libsl.ast.type.NameTypeExpr
 import org.jetbrains.research.libsl.ast.walk
 import org.jetbrains.research.libsl.exception.ConflictingDefinitionException
 import org.jetbrains.research.libsl.exception.ConflictingImportException
 import org.jetbrains.research.libsl.exception.ConflictingParamNameException
-import org.jetbrains.research.libsl.exception.UnresolvedReference
+import org.jetbrains.research.libsl.exception.TooFewArgumentsException
+import org.jetbrains.research.libsl.exception.TooManyArgumentsException
+import org.jetbrains.research.libsl.exception.UnorderedMixedNamedAndUnnamedArgumentsException
+import org.jetbrains.research.libsl.exception.UnresolvedReferenceException
 import org.jetbrains.research.libsl.location.Location
 import org.jetbrains.research.libsl.resolve.scope.ModuleScope
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
 import org.jetbrains.research.libsl.resolve.scope.Scope
-import org.jetbrains.research.libsl.type.AliasType
-import org.jetbrains.research.libsl.type.EnumType
-import org.jetbrains.research.libsl.type.SemanticType
-import org.jetbrains.research.libsl.type.StructType
+import org.jetbrains.research.libsl.type.TypeConstructor
 import org.jetbrains.research.libsl.type.TypeParam
 
-internal class ModuleResolver(private val libsl: LibSL, private val rootModule: Module) {
+internal class NameResolver(private val libsl: LibSL, private val rootModule: Module) {
     // populated in `addTopLevelDefs`; in reverse post-order
     private val modules = mutableListOf<Module>()
 
@@ -102,7 +104,6 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                     }
 
                     is AutomatonDecl -> {
-                        // TODO: define members too.
                         val name = decl.name.typeName.toString()
                         val location = decl.name.typeName.location
 
@@ -113,7 +114,9 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                         val name = decl.typeName.typeName.toString()
                         val location = decl.typeName.typeName.location
 
-                        decl.primaryDef = module.scope.define(name, location, EnumType(decl)).orThrow(name, location)
+                        decl.primaryDef = module.scope
+                            .define(name, location, TypeConstructor.Enum(decl))
+                            .orThrow(name, location)
                     }
 
                     is FunctionDecl -> {
@@ -138,16 +141,17 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                         val name = decl.typeName.typeName.toString()
                         val location = decl.typeName.typeName.location
 
-                        decl.primaryDef = module.scope.define(name, location, SemanticType(decl))
+                        decl.primaryDef = module.scope
+                            .define(name, location, TypeConstructor.Semantic(decl))
                             .orThrow(name, location)
                     }
 
                     is StructDecl -> {
-                        // TODO: define members too.
                         val name = decl.typeName.typeName.toString()
                         val location = decl.typeName.typeName.location
 
-                        decl.primaryDef = module.scope.define(name, location, StructType(decl))
+                        decl.primaryDef = module.scope
+                            .define(name, location, TypeConstructor.Struct(decl))
                             .orThrow(name, location)
                     }
 
@@ -155,7 +159,9 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                         val name = decl.typeName.typeName.toString()
                         val location = decl.typeName.typeName.location
 
-                        decl.primaryDef = module.scope.define(name, location, AliasType(decl)).orThrow(name, location)
+                        decl.primaryDef = module.scope
+                            .define(name, location, TypeConstructor.Alias(decl))
+                            .orThrow(name, location)
                     }
 
                     is VariableDecl -> {
@@ -214,12 +220,12 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
     private fun resolveTopLevelDefs() {
         for (module in modules.asReversed()) {
             for (decl in module.decls) {
-                TopLevelDefVisitor(module).visit(decl)
+                DefVisitor(module).visit(decl)
             }
         }
     }
 
-    private inner class TopLevelDefVisitor(module: Module) : Visitor() {
+    private inner class DefVisitor(module: Module) : Visitor() {
         private var currentScope: MutableScope = module.scope
 
         private inline fun <T : MutableScope> enter(scope: T, f: () -> Unit): T {
@@ -235,10 +241,14 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             return scope
         }
 
-        private fun defineGeneric(generic: Generic) {
+        private fun defineGeneric(generic: Generic): TypeParam {
+            val param = TypeParam(generic)
+
             generic.primaryDef = currentScope
-                .define(generic.name.toString(), generic.name.location, TypeParam(generic))
+                .define(generic.name.toString(), generic.name.location, TypeConstructor.Nullary(param))
                 .orThrowParamConflict(generic.name)
+
+            return param
         }
 
         private fun defineParam(param: FunctionParam) {
@@ -247,9 +257,83 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                 .orThrowParamConflict(param.name)
         }
 
+        private fun defineMembers(decl: AutomatonDecl) {
+            for (varDecl in decl.constructorVariables) {
+                varDecl.primaryDef = currentScope
+                    .define(varDecl.name.toString(), varDecl.location, Binding.of(varDecl))
+                    .orThrow(varDecl.name)
+            }
+
+            for (decl in decl.decls) {
+                when (decl) {
+                    is ConstructorDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is DestructorDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is FunctionDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is ProcDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is ShiftDecl -> {}
+
+                    is StateDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is VariableDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, Binding.of(decl))
+                            .orThrow(decl.name)
+                    }
+                }
+            }
+        }
+
+        private fun defineMembers(decl: StructDecl) {
+            for (decl in decl.decls) {
+                when (decl) {
+                    is FunctionDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is ProcDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, decl)
+                            .orThrow(decl.name)
+                    }
+
+                    is VariableDecl -> {
+                        decl.primaryDef = currentScope
+                            .define(decl.name.toString(), decl.name.location, Binding.of(decl))
+                            .orThrow(decl.name)
+                    }
+                }
+            }
+        }
+
         private fun visit(typeConstraint: TypeConstraint, paramScope: Scope) {
             typeConstraint.resolvedParam = paramScope.resolveTypeLocally(typeConstraint.param.toString())
-                ?: throw UnresolvedReference.toTypeParamInConstraint(
+                ?: throw UnresolvedReferenceException.toTypeParamInConstraint(
                     typeConstraint.param.toString(),
                     typeConstraint.param.location,
                 )
@@ -301,6 +385,8 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.scope = enter(MutableScope(currentScope)) {
+                defineMembers(decl)
+
                 for (generic in decl.name.generics) {
                     defineGeneric(generic)
                 }
@@ -315,8 +401,6 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
                     visit(decl)
                 }
             }
-
-            // TODO: resolve function references in state transition declarations.
         }
 
         override fun visit(decl: EnumDecl) {
@@ -325,8 +409,10 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.scope = enter(MutableScope(currentScope)) {
+                val typeParams = (decl.primaryDef.entity as TypeConstructor.Enum).params
+
                 for (generic in decl.typeName.generics) {
-                    defineGeneric(generic)
+                    typeParams += defineGeneric(generic)
                 }
 
                 for (variant in decl.variants) {
@@ -338,19 +424,13 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
         }
 
         override fun visit(decl: FunctionDecl) {
-            if (!decl.primaryDefInitialized) {
-                decl.primaryDef = currentScope
-                    .define(decl.name.toString(), decl.name.location, decl)
-                    .orThrow(decl.name)
-            }
-
             for (annotation in decl.annotations) {
                 visit(annotation)
             }
 
             decl.resolvedExtensionFor = decl.extensionFor?.let { fullName ->
                 currentScope.resolveAutomaton(fullName.toString())
-                    ?: throw UnresolvedReference.toAutomaton(fullName.toString(), fullName.location)
+                    ?: throw UnresolvedReferenceException.toAutomaton(fullName.toString(), fullName.location)
             }
 
             decl.paramScope = enter(MutableScope(currentScope)) {
@@ -392,8 +472,10 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.scope = enter(MutableScope(currentScope)) {
+                val typeParams = (decl.primaryDef.entity as TypeConstructor.Semantic).params
+
                 for (generic in decl.typeName.generics) {
-                    defineGeneric(generic)
+                    typeParams += defineGeneric(generic)
                 }
 
                 visit(decl.realType)
@@ -412,8 +494,12 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.scope = enter(MutableScope(currentScope)) {
+                defineMembers(decl)
+
+                val typeParams = (decl.primaryDef.entity as TypeConstructor.Semantic).params
+
                 for (generic in decl.typeName.generics) {
-                    defineGeneric(generic)
+                    typeParams += defineGeneric(generic)
                 }
 
                 decl.isType?.let(this::visit)
@@ -438,8 +524,10 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.scope = enter(MutableScope(currentScope)) {
+                val typeParams = (decl.primaryDef.entity as TypeConstructor.Alias).params
+
                 for (generic in decl.typeName.generics) {
-                    defineGeneric(generic)
+                    typeParams += defineGeneric(generic)
                 }
 
                 visit(decl.typeExpr)
@@ -459,7 +547,7 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
         override fun visit(decl: ShiftDecl) {
             fun resolveState(state: Name): Def<StateDecl> =
                 currentScope.resolveState(state.toString())
-                    ?: throw UnresolvedReference.toState(state.toString(), state.location)
+                    ?: throw UnresolvedReferenceException.toState(state.toString(), state.location)
 
             decl.fromStates = decl.from.asSequence().map { resolveState(it) }.toMutableList()
             decl.toState = resolveState(decl.to)
@@ -523,6 +611,63 @@ internal class ModuleResolver(private val libsl: LibSL, private val rootModule: 
             }
 
             decl.body?.let { visit(it, decl.paramScope) }
+        }
+
+        override fun visit(annotation: LibSLAnnotation) {
+            annotation.resolved = currentScope.resolveAnnotation(annotation.name.toString())
+                ?: throw UnresolvedReferenceException.toAnnotation(annotation.name.toString(), annotation.name.location)
+
+            val params = annotation.resolved.entity.params
+            val args = annotation.args
+
+            when {
+                args.size > params.size -> throw TooManyArgumentsException(
+                    args[params.size].expr.location,
+                    args.size,
+                    params.size,
+                )
+
+                args.size < params.size -> throw TooFewArgumentsException(
+                    annotation.location,
+                    args.size,
+                    params.size,
+                )
+            }
+
+            var argsInOrder = true
+
+            for ((idx, arg) in args.withIndex()) {
+                val name = arg.name
+
+                arg.paramIndex = if (name == null) {
+                    if (!argsInOrder) {
+                        throw UnorderedMixedNamedAndUnnamedArgumentsException(arg.expr.location)
+                    }
+
+                    idx
+                } else {
+                    when (val idx = params.indexOfFirst { it.name.toString() == name.toString() }) {
+                        -1 -> throw UnresolvedReferenceException.toParam(name.toString(), name.location)
+                        else -> idx
+                    }
+                }
+
+                if (arg.paramIndex != idx) {
+                    argsInOrder = false
+                }
+            }
+
+            for (arg in args) {
+                visit(arg.expr)
+            }
+        }
+
+        override fun visit(typeExpr: NameTypeExpr) {
+            typeExpr.resolvedTypeName = currentScope
+                .resolveType(typeExpr.typeName.toString())
+                ?: throw UnresolvedReferenceException.toType(typeExpr.typeName.toString(), typeExpr.typeName.location)
+
+            super.visit(typeExpr)
         }
     }
 }

@@ -11,19 +11,19 @@ import org.jetbrains.research.libsl.resolve.Binding
 import org.jetbrains.research.libsl.resolve.Def
 import org.jetbrains.research.libsl.resolve.Entity
 import org.jetbrains.research.libsl.resolve.scope.MutableScope
-import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeConstructor
 
 data class EnumDecl(
     override var location: Location?,
     override var annotations: MutableList<LibSLAnnotation>,
     var typeName: QualifiedTypeName,
     var variants: MutableList<Variant>
-) : GlobalDecl, Annotatable, Entity<Type> {
+) : GlobalDecl, Annotatable, Entity<TypeConstructor> {
     data class Variant(var name: Name, var value: IntLit) : Entity<Binding> {
         override lateinit var primaryDef: Def.Primary<Binding>
     }
 
-    override lateinit var primaryDef: Def.Primary<Type>
+    override lateinit var primaryDef: Def.Primary<TypeConstructor>
     lateinit var scope: MutableScope
 }
 
