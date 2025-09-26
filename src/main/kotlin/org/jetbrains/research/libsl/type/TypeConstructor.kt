@@ -12,24 +12,28 @@ sealed interface TypeConstructor {
         override val params: List<TypeParam>? = null
     }
 
-    class Alias(val decl: TypeAliasDecl) : TypeConstructor {
+    sealed interface NonNullary : TypeConstructor {
+        override val params: List<TypeParam>
+    }
+
+    class Alias(val decl: TypeAliasDecl) : NonNullary {
         override val params: MutableList<TypeParam> = mutableListOf()
     }
 
-    class Struct(val decl: StructDecl) : TypeConstructor {
+    class Struct(val decl: StructDecl) : NonNullary {
         override val params: MutableList<TypeParam> = mutableListOf()
     }
 
-    class Enum(val decl: EnumDecl) : TypeConstructor {
+    class Enum(val decl: EnumDecl) : NonNullary {
         override val params: MutableList<TypeParam> = mutableListOf()
     }
 
-    class Semantic(val decl: SemanticTypeDecl) : TypeConstructor {
+    class Semantic(val decl: SemanticTypeDecl) : NonNullary {
         override val params: MutableList<TypeParam> = mutableListOf()
     }
 }
 
-class ConstructedType(val constructor: TypeConstructor, val args: MutableList<Arg>) : Type {
+class ConstructedType(val constructor: TypeConstructor.NonNullary, val args: MutableList<Arg>) : Type {
     class Arg(val type: Type?) {
         fun isWildcard(): Boolean = type == null
     }
