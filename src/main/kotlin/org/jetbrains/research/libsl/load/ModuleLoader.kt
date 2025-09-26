@@ -274,8 +274,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
 
     private fun processTypeConstraint(ctx: LibSLParser.TypeConstraintContext): TypeConstraint = TypeConstraint(
         processName(ctx.param),
-        ctx.variance?.let(::processVarianceSpec),
-        processTypeArg(ctx.bound),
+        processTypeExpr(ctx.bound),
     )
 
     internal fun processSignedNumLit(ctx: LibSLParser.SignedNumLitContext): PrimitiveLit {
@@ -440,8 +439,14 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
     }
 
     internal fun processTypeArg(ctx: LibSLParser.TypeArgContext): TypeArg = when (ctx) {
-        is LibSLParser.TypeArgTypeExprContext -> processTypeExpr(ctx.typeExpr())
+        is LibSLParser.TypeArgTypeExprContext -> TypeArg.TypeExpr(
+            locationOf(ctx),
+            ctx.variance?.let(::processVarianceSpec),
+            processTypeExpr(ctx.typeExpr()),
+        )
+
         is LibSLParser.TypeArgWildcardContext -> TypeArg.Wildcard(locationOf(ctx))
+
         else -> error("unrecognized type arg $ctx")
     }
 }
