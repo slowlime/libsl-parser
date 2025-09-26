@@ -279,4 +279,40 @@ class ModuleScope private constructor(
 
     fun importAction(location: Location?, def: Def<ActionDecl>): ImportResult<ActionDecl> =
         import(ModuleScope::aliasAction, location, def)
+
+    private fun <T> mergeScopes(getNamespace: MutableScope.() -> MutableMap<String, Def<T>>): Sequence<Def<T>> {
+        val importedDefs = importScope.getNamespace().values.asSequence()
+            .filterNot { getNamespace().containsKey(it.name) }
+        val localDefs = getNamespace().values.asSequence()
+
+        return importedDefs + localDefs
+    }
+
+    val allTypes: Sequence<Def<TypeConstructor>>
+        get() = mergeScopes { types }
+
+    val allAutomata: Sequence<Def<AutomatonDecl>>
+        get() = mergeScopes { automata }
+
+    val allFunctions: Sequence<Def<FunctionLikeDecl>>
+        get() {
+            val keys = importScope.functions.keys + functions.keys
+
+            return keys.asSequence()
+                .flatMap { name ->
+                    val imported = importScope.functions[name].orEmpty()
+                    val local = functions[name].orEmpty()
+
+                    imported + local
+                }
+        }
+
+    val allBindings: Sequence<Def<Binding>>
+        get() = mergeScopes { bindings }
+
+    val allAnnotations: Sequence<Def<AnnotationDecl>>
+        get() = mergeScopes { annotations }
+
+    val allActions: Sequence<Def<ActionDecl>>
+        get() = mergeScopes { actions }
 }

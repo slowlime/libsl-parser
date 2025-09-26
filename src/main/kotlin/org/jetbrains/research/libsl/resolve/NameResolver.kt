@@ -198,8 +198,8 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
             for (decl in module.imports) {
                 val importedModule = decl.importedModule
 
-                for ((_, def) in importedModule.scope.types) {
-                    when (val result = module.scope.importType(decl.location, def)) {
+                fun <T> handle(result: ModuleScope.ImportResult<T>, def: Def<T>) {
+                    when (result) {
                         is ModuleScope.ImportResult.Success if result.new -> {
                             for ((dependent, _) in module.importedBy) {
                                 push(dependent)
@@ -216,6 +216,30 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                             result.previousDef.primary.location,
                         )
                     }
+                }
+
+                for (def in importedModule.scope.allTypes) {
+                    handle(module.scope.importType(decl.location, def), def)
+                }
+
+                for (def in importedModule.scope.allAutomata) {
+                    handle(module.scope.importAutomaton(decl.location, def), def)
+                }
+
+                for (def in importedModule.scope.allFunctions) {
+                    handle(module.scope.importFunction(decl.location, def), def)
+                }
+
+                for (def in importedModule.scope.allBindings) {
+                    handle(module.scope.importBinding(decl.location, def), def)
+                }
+
+                for (def in importedModule.scope.allAnnotations) {
+                    handle(module.scope.importAnnotation(decl.location, def), def)
+                }
+
+                for (def in importedModule.scope.allActions) {
+                    handle(module.scope.importAction(decl.location, def), def)
                 }
             }
         }
