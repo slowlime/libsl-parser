@@ -1,6 +1,6 @@
 /build/
-/libsl?/src/main/gen/
-/libsl?/build/
+/libsl*/src/main/gen/
+/libsl*/build/
 /.idea/.name
 /.idea/compiler.xml
 /.idea/gradle.xml
