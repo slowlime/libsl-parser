@@ -35,6 +35,18 @@ class LibSL(private val fileLoader: FileLoader) {
 
     fun load(path: String): LoadResult {
         val request = requestLoad(path, loadChain = null)
+
+        return processLoadRequests(request)
+    }
+
+    fun loadFromString(path: String, canonicalPath: CanonicalPath, contents: String): LoadResult {
+        val file = LoadedFile(path, canonicalPath, contents)
+        val request = requestLoad(file, loadChain = null)
+
+        return processLoadRequests(request)
+    }
+
+    private fun processLoadRequests(request: ModuleLoadRequest): LoadResult {
         val error = processLoadRequests()
 
         if (error != null) {
@@ -48,8 +60,13 @@ class LibSL(private val fileLoader: FileLoader) {
     }
 
     internal fun requestLoad(path: String, loadChain: LoadChain?, onLoaded: (Module) -> Unit = {}): ModuleLoadRequest {
-        val loadChain = loadChain ?: LoadChain.TopLevel(path)
         val file = fileLoader.load(path)
+
+        return requestLoad(file, loadChain, onLoaded)
+    }
+
+    private fun requestLoad(file: LoadedFile, loadChain: LoadChain?, onLoaded: (Module) -> Unit = {}): ModuleLoadRequest {
+        val loadChain = loadChain ?: LoadChain.TopLevel(file.path)
 
         return requestsByPath.getOrPut(file.canonicalPath) {
             ModuleLoadRequest(ModuleState.InProgress(file, loadChain), onLoaded)
