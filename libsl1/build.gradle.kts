@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.7.10"
+    kotlin("jvm")
     antlr
     kotlin("plugin.serialization") version "1.5.10"
     `maven-publish`
@@ -25,18 +25,22 @@ tasks.test {
     useJUnitPlatform()
 }
 
-tasks.withType<KotlinCompile>() {
-    kotlinOptions.jvmTarget = "1.8"
+kotlin {
+    jvmToolchain(11)
+}
+
+tasks.withType<KotlinCompile>().configureEach {
     dependsOn("generateGrammarSource")
 }
 
 tasks.generateGrammarSource {
     maxHeapSize = "64m"
-    outputDirectory = File("${project.buildDir}/generated-src/antlr/main/org/jetbrains/research/libsl")
+    outputDirectory = project.layout.buildDirectory.asFile.get()
+        .resolve("generated-src/antlr/main/org/jetbrains/research/libsl")
     arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages")
 }
 
-val sourcesJar by tasks.creating(Jar::class) {
+val sourcesJar by tasks.registering(Jar::class) {
     archiveClassifier.set("sources")
     from(sourceSets.getByName("main").allSource)
 }
