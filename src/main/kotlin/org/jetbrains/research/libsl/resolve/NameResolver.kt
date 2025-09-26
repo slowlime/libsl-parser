@@ -9,6 +9,8 @@ import org.jetbrains.research.libsl.ast.Module
 import org.jetbrains.research.libsl.ast.Name
 import org.jetbrains.research.libsl.ast.TypeConstraint
 import org.jetbrains.research.libsl.ast.Visitor
+import org.jetbrains.research.libsl.ast.access.Access
+import org.jetbrains.research.libsl.ast.access.NameAccess
 import org.jetbrains.research.libsl.ast.decl.ActionDecl
 import org.jetbrains.research.libsl.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl.ast.decl.AutomatonDecl
@@ -735,6 +737,23 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                 ?: throw UnresolvedReferenceException.toAutomaton(expr.name.toString(), expr.name.location)
 
             super.visit(expr)
+        }
+
+        override fun visit(expr: ProcCallExpr) {
+            // don't resolve the callee here: we need typing information for that
+            // visit(expr.callee)
+
+            expr.typeArgs?.forEach { visit(it) }
+
+            for (arg in expr.args) {
+                visit(arg)
+            }
+        }
+
+        // assumes the access refers to a binding.
+        override fun visit(access: NameAccess) {
+            access.resolved = currentScope.resolveBinding(access.name.toString())
+                ?: throw UnresolvedReferenceException.toBinding(access.name.toString(), access.name.location)
         }
     }
 }

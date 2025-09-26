@@ -133,6 +133,12 @@ class UnresolvedReferenceException(
             "unresolved reference to action `$name`",
             "unresolved reference to action `$name` (${location.inAt()})",
         )
+
+        fun toBinding(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
+            location,
+            "unresolved reference to variable `$name`",
+            "unresolved reference to variable `$name` (${location.inAt()})",
+        )
     }
 }
 
