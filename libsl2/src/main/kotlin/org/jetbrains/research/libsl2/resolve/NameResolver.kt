@@ -9,7 +9,6 @@ import org.jetbrains.research.libsl2.ast.Module
 import org.jetbrains.research.libsl2.ast.Name
 import org.jetbrains.research.libsl2.ast.TypeConstraint
 import org.jetbrains.research.libsl2.ast.Visitor
-import org.jetbrains.research.libsl2.ast.access.Access
 import org.jetbrains.research.libsl2.ast.access.NameAccess
 import org.jetbrains.research.libsl2.ast.decl.ActionDecl
 import org.jetbrains.research.libsl2.ast.decl.AnnotationDecl
@@ -48,7 +47,7 @@ import org.jetbrains.research.libsl2.type.TypeConstructor
 import org.jetbrains.research.libsl2.type.TypeParam
 
 internal class NameResolver(private val libsl: LibSL, private val rootModule: Module) {
-    // populated in `addTopLevelDefs`; in reverse post-order
+    // populated in `addTopLevelDefs`; in post-order
     private val modules = mutableListOf<Module>()
 
     fun resolve() {
@@ -131,10 +130,11 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                     }
 
                     is ImportDecl -> {
+                        module.imports += decl
+                        decl.importedModule.importedBy += Pair(module, decl)
+
                         if (discoveredModules.add(decl.importedModule)) {
                             taskStack += Task(decl.importedModule)
-                            module.imports += decl
-                            decl.importedModule.importedBy += Pair(module, decl)
 
                             // process children first
                             continue@dfs

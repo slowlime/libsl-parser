@@ -15,6 +15,39 @@ data class Module(
     val scope = ModuleScope(this)
     val imports: MutableList<ImportDecl> = mutableListOf()
     val importedBy: MutableList<Pair<Module, ImportDecl>> = mutableListOf()
+
+    /**
+     * Walks the module import graph and returns its post-order.
+     *
+     * The returned list contains this module and all (transitively) imported modules (each occurring exactly once)
+     * so that later modules import earlier modules unless there is an import cycle.
+     */
+    fun getModuleGraphPostOrder(): List<Module> {
+        data class Task(val module: Module, var declIdx: Int = 0)
+
+        val rpo = mutableListOf<Module>()
+        val discoveredModules = mutableSetOf(this)
+        val taskStack = mutableListOf(Task(this))
+
+        dfs@ while (taskStack.isNotEmpty()) {
+            val task = taskStack.last()
+            val module = task.module
+
+            while (task.declIdx < module.decls.size) {
+                val decl = module.decls[task.declIdx++]
+
+                if (decl is ImportDecl && discoveredModules.add(decl.importedModule)) {
+                    taskStack += Task(decl.importedModule)
+                    continue@dfs
+                }
+            }
+
+            rpo += module
+            taskStack.removeLast()
+        }
+
+        return rpo
+    }
 }
 
 fun Module.walk(visitor: Visitor) {
