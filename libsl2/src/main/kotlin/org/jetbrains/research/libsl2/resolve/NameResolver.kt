@@ -271,6 +271,15 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
             return scope
         }
 
+        private inline fun <T : MutableScope> enterOrCurrent(scope: T?, f: () -> Unit): T? =
+            if (scope != null) {
+                enter(scope, f)
+            } else {
+                f()
+
+                null
+            }
+
         private fun defineGeneric(generic: Generic): TypeParam {
             val param = TypeParam(generic)
 
@@ -471,23 +480,25 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                     ?: throw UnresolvedReferenceException.toAutomaton(fullName.toString(), fullName.location)
             }
 
-            decl.paramScope = enter(MutableScope(currentScope)) {
-                for (generic in decl.generics) {
-                    defineGeneric(generic)
+            enterOrCurrent(decl.resolvedExtensionFor?.entity?.scope) {
+                decl.paramScope = enter(MutableScope(currentScope)) {
+                    for (generic in decl.generics) {
+                        defineGeneric(generic)
+                    }
+
+                    for (param in decl.params) {
+                        defineParam(param)
+                    }
+
+                    decl.returnType?.let(this::visit)
+
+                    for (typeConstraint in decl.typeConstraints) {
+                        visit(typeConstraint, currentScope)
+                    }
                 }
 
-                for (param in decl.params) {
-                    defineParam(param)
-                }
-
-                decl.returnType?.let(this::visit)
-
-                for (typeConstraint in decl.typeConstraints) {
-                    visit(typeConstraint, currentScope)
-                }
+                decl.body?.let { visit(it, decl.paramScope) }
             }
-
-            decl.body?.let { visit(it, decl.paramScope) }
         }
 
         override fun visit(decl: SemanticTypeDecl.Simple) {
