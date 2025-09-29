@@ -5,6 +5,8 @@ import org.jetbrains.research.libsl.context.AutomatonContext
 import org.jetbrains.research.libsl.context.FunctionContext
 import org.jetbrains.research.libsl.context.LslContextBase
 import org.jetbrains.research.libsl.context.LslGlobalContext
+import org.jetbrains.research.libsl.nodes.ActionArgumentDescriptor
+import org.jetbrains.research.libsl.nodes.ActionDecl
 import org.jetbrains.research.libsl.nodes.Annotation
 import org.jetbrains.research.libsl.nodes.AnnotationArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.AnnotationUsage
@@ -20,6 +22,7 @@ import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
+import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
 import org.jetbrains.research.libsl2.ast.Header
@@ -62,7 +65,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         PositionInfo(line, column),
     )
 
-    private open inner class Translator<C : LslContextBase>(open val ctx: C) {
+    private open inner class Translator<C : LslContextBase>(val ctx: C) {
         fun translateAnnotation(annotation: LibSLAnnotation): AnnotationUsage {
             val name = annotation.name.toString()
             val args = annotation.args.map { arg ->
@@ -81,6 +84,13 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 args,
                 annotation.location!!.toEntityPosition(),
             )
+        }
+
+        fun translateGenerics(
+            generics: List<org.jetbrains.research.libsl2.ast.Generic>,
+            typeConstraints: List<org.jetbrains.research.libsl2.ast.TypeConstraint>,
+        ): MutableList<GenericType> {
+            TODO()
         }
     }
 
@@ -174,12 +184,12 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             val name = decl.name.toString()
             val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(decl.typeExpr)
             val initValue = decl.init?.let { ExprTranslator(compat.globalCtx).translateExpr(it) }
-            val annotationUsages = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val variable = VariableWithInitialValue(
                 keyword,
                 name,
                 typeRef,
-                annotationUsages,
+                annotations,
                 initValue,
                 decl.location!!.toEntityPosition(),
             )
@@ -226,11 +236,38 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         }
     }
 
-    private inner class ActionTranslator(val decl: org.jetbrains.research.libsl2.ast.decl.ActionDecl) : Translator<ActionContext>(
-        ActionContext(compat.globalCtx),
-    ) {
+    private inner class ActionTranslator(val decl: org.jetbrains.research.libsl2.ast.decl.ActionDecl) :
+        Translator<ActionContext>(ActionContext(compat.globalCtx)) {
+
         fun translate() {
-            TODO()
+            val name = decl.name.toString()
+
+            val params = decl.params.mapTo(mutableListOf()) { param ->
+                ActionArgumentDescriptor(
+                    param.annotations.mapTo(mutableListOf(), ::translateAnnotation),
+                    param.name.toString(),
+                    TypeTranslator(ctx).translateTypeExpr(param.typeExpr),
+                    param.name.location!!.toEntityPosition(),
+                )
+            }
+
+            val returnType = decl.returnType?.let { TypeTranslator(ctx).translateTypeExpr(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+
+            for (genericType in translateGenerics(decl.generics, decl.typeConstraints)) {
+                ctx.storeActionType(genericType)
+            }
+
+            val action = ActionDecl(
+                name,
+                params,
+                annotations,
+                ctx,
+                returnType,
+                decl.location!!.toEntityPosition(),
+            )
+
+            compat.globalCtx.storeDeclaredAction(action)
         }
     }
 
