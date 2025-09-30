@@ -11,25 +11,35 @@ import org.jetbrains.research.libsl.nodes.ActionDecl
 import org.jetbrains.research.libsl.nodes.Annotation
 import org.jetbrains.research.libsl.nodes.AnnotationArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.AnnotationUsage
+import org.jetbrains.research.libsl.nodes.AssignOps
+import org.jetbrains.research.libsl.nodes.Assignment
 import org.jetbrains.research.libsl.nodes.Automaton
 import org.jetbrains.research.libsl.nodes.AutomatonConcept
 import org.jetbrains.research.libsl.nodes.Constructor
 import org.jetbrains.research.libsl.nodes.ConstructorArgument
+import org.jetbrains.research.libsl.nodes.Contract
+import org.jetbrains.research.libsl.nodes.ContractKind
 import org.jetbrains.research.libsl.nodes.Destructor
+import org.jetbrains.research.libsl.nodes.ElseStatement
 import org.jetbrains.research.libsl.nodes.Expression
+import org.jetbrains.research.libsl.nodes.ExpressionStatement
 import org.jetbrains.research.libsl.nodes.Function
 import org.jetbrains.research.libsl.nodes.FunctionArgument
 import org.jetbrains.research.libsl.nodes.FunctionKind
+import org.jetbrains.research.libsl.nodes.IfStatement
 import org.jetbrains.research.libsl.nodes.ImplementedConcept
 import org.jetbrains.research.libsl.nodes.Library
 import org.jetbrains.research.libsl.nodes.LslVersion
 import org.jetbrains.research.libsl.nodes.MetaNode
 import org.jetbrains.research.libsl.nodes.NamedArgumentWithValue
 import org.jetbrains.research.libsl.nodes.Procedure
+import org.jetbrains.research.libsl.nodes.QualifiedAccess
 import org.jetbrains.research.libsl.nodes.ResultVariable
 import org.jetbrains.research.libsl.nodes.Shift
 import org.jetbrains.research.libsl.nodes.State
 import org.jetbrains.research.libsl.nodes.StateKind
+import org.jetbrains.research.libsl.nodes.Statement
+import org.jetbrains.research.libsl.nodes.VariableDeclaration
 import org.jetbrains.research.libsl.nodes.VariableKind
 import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
 import org.jetbrains.research.libsl.nodes.references.TypeReference
@@ -42,8 +52,6 @@ import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
-import org.jetbrains.research.libsl2.ast.FunctionBody
-import org.jetbrains.research.libsl2.ast.FunctionParam
 import org.jetbrains.research.libsl2.ast.Header
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
@@ -215,14 +223,14 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             val keyword = if (decl.mutable) VariableKind.VAR else VariableKind.VAL
             val name = decl.name.toString()
             val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(decl.typeExpr)
-            val initValue = decl.init?.let { ExprTranslator(compat.globalCtx).translateExpr(it) }
+            val init = decl.init?.let { ExprTranslator(compat.globalCtx).translateExpr(it) }
             val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val variable = VariableWithInitialValue(
                 keyword,
                 name,
                 typeRef,
                 annotations,
-                initValue,
+                init,
                 decl.location!!.toEntityPosition(),
             )
             compat.globalCtx.storeVariable(variable)
@@ -532,7 +540,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             automaton?.procDeclarations?.add(function)
         }
 
-        private fun translateParams(params: List<FunctionParam>): MutableList<FunctionArgument> =
+        private fun translateParams(params: List<org.jetbrains.research.libsl2.ast.FunctionParam>): MutableList<FunctionArgument> =
             params.mapIndexedTo(mutableListOf()) { idx, param ->
                 val typeRef = TypeTranslator(ctx).translateTypeExpr(param.typeExpr)
                 val annotations = param.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
@@ -547,8 +555,147 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 )
             }
 
-        private fun translateBody(body: FunctionBody) {
-            TODO()
+        private fun translateBody(body: org.jetbrains.research.libsl2.ast.FunctionBody) {
+            for (contract in body.contracts) {
+                when (contract) {
+                    is org.jetbrains.research.libsl2.ast.contract.AssignsContract -> translateContract(contract)
+                    is org.jetbrains.research.libsl2.ast.contract.EnsuresContract -> translateContract(contract)
+                    is org.jetbrains.research.libsl2.ast.contract.RequiresContract -> translateContract(contract)
+                }
+            }
+
+            for (stmt in body.stmts) {
+                translateStmt(stmt, function.statements)
+            }
+        }
+
+        private fun translateContract(contract: org.jetbrains.research.libsl2.ast.contract.AssignsContract) {
+            function.contracts.add(
+                Contract(
+                    contract.name?.toString(),
+                    ExprTranslator(ctx).translateExpr(contract.expr),
+                    ContractKind.ASSIGNS,
+                    contract.location!!.toEntityPosition(),
+                ),
+            )
+        }
+
+        private fun translateContract(contract: org.jetbrains.research.libsl2.ast.contract.EnsuresContract) {
+            function.contracts.add(
+                Contract(
+                    contract.name?.toString(),
+                    ExprTranslator(ctx).translateExpr(contract.expr),
+                    ContractKind.ENSURES,
+                    contract.location!!.toEntityPosition(),
+                ),
+            )
+        }
+
+        private fun translateContract(contract: org.jetbrains.research.libsl2.ast.contract.RequiresContract) {
+            function.contracts.add(
+                Contract(
+                    contract.name?.toString(),
+                    ExprTranslator(ctx).translateExpr(contract.expr),
+                    ContractKind.REQUIRES,
+                    contract.location!!.toEntityPosition(),
+                ),
+            )
+        }
+
+        private fun translateStmt(
+            stmt: org.jetbrains.research.libsl2.ast.stmt.Stmt,
+            statements: MutableList<Statement>,
+        ) {
+            if (automaton is AutomatonConcept) {
+                error("Function realisation inside automaton concept")
+            }
+
+            when (stmt) {
+                is org.jetbrains.research.libsl2.ast.stmt.AssignStmt -> translateStmt(stmt, statements)
+                is org.jetbrains.research.libsl2.ast.stmt.ExprStmt -> translateStmt(stmt, statements)
+                is org.jetbrains.research.libsl2.ast.stmt.IfStmt -> translateStmt(stmt, statements)
+                is org.jetbrains.research.libsl2.ast.stmt.VariableDeclStmt -> translateStmt(stmt, statements)
+            }
+        }
+
+        private fun translateStmt(
+            stmt: org.jetbrains.research.libsl2.ast.stmt.AssignStmt,
+            statements: MutableList<Statement>,
+        ) {
+            val assignee = ExprTranslator(ctx).translateAccess(stmt.lhs)
+
+            val op = when (stmt.inPlaceOp) {
+                null -> AssignOps.ASSIGN
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.Add -> AssignOps.COMP_ADD
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.Sub -> AssignOps.COMP_SUB
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.Mul -> AssignOps.COMP_MUL
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.Div -> AssignOps.COMP_DIV
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.Mod -> AssignOps.COMP_MOD
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.BitAnd -> AssignOps.COMP_AND
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.BitOr -> AssignOps.COMP_OR
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.BitXor -> AssignOps.COMP_XOR
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.LShift -> AssignOps.COMP_L_SHIFT
+                org.jetbrains.research.libsl2.ast.stmt.AssignStmt.InPlaceOp.RShift -> AssignOps.COMP_R_SHIFT
+            }
+
+            val expr = ExprTranslator(ctx).translateExpr(stmt.rhs)
+
+            statements += Assignment(assignee, op, expr, stmt.location!!.toEntityPosition())
+        }
+
+        private fun translateStmt(
+            stmt: org.jetbrains.research.libsl2.ast.stmt.ExprStmt,
+            statements: MutableList<Statement>,
+        ) {
+            val expr = ExprTranslator(ctx).translateExpr(stmt.expr)
+
+            statements += ExpressionStatement(expr, stmt.location!!.toEntityPosition())
+        }
+
+        private fun translateStmt(
+            stmt: org.jetbrains.research.libsl2.ast.stmt.IfStmt,
+            statements: MutableList<Statement>,
+        ) {
+            val condition = ExprTranslator(ctx).translateExpr(stmt.condition)
+            val thenBranch = mutableListOf<Statement>()
+
+            for (stmt in stmt.thenBranch) {
+                translateStmt(stmt, thenBranch)
+            }
+
+            val elseBranch = stmt.elseBranch?.let { block ->
+                val elseBranch = mutableListOf<Statement>()
+
+                for (stmt in block) {
+                    translateStmt(stmt, elseBranch)
+                }
+
+                ElseStatement(elseBranch, stmt.location!!.toEntityPosition())
+            }
+
+            statements += IfStatement(condition, thenBranch, elseBranch, stmt.location!!.toEntityPosition())
+        }
+
+        private fun translateStmt(
+            stmt: org.jetbrains.research.libsl2.ast.stmt.VariableDeclStmt,
+            statements: MutableList<Statement>,
+        ) {
+            val keyword = if (stmt.decl.mutable) VariableKind.VAR else VariableKind.VAL
+            val name = stmt.decl.name.toString()
+            val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(stmt.decl.typeExpr)
+            val init = stmt.decl.init?.let { ExprTranslator(compat.globalCtx).translateExpr(it) }
+            val annotations = stmt.decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+            val variable = VariableWithInitialValue(
+                keyword,
+                name,
+                typeRef,
+                annotations,
+                init,
+                stmt.decl.location!!.toEntityPosition(),
+            )
+
+            statements += VariableDeclaration(variable, stmt.location!!.toEntityPosition())
+            ctx.storeVariable(variable)
         }
     }
 
@@ -615,6 +762,10 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
     private inner class ExprTranslator(ctx: LslContextBase) : Translator<LslContextBase>(ctx) {
         fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.Expr): Expression {
+            TODO()
+        }
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.Access): QualifiedAccess {
             TODO()
         }
     }
