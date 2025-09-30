@@ -13,13 +13,20 @@ import org.jetbrains.research.libsl.nodes.AnnotationArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.AnnotationUsage
 import org.jetbrains.research.libsl.nodes.Automaton
 import org.jetbrains.research.libsl.nodes.AutomatonConcept
+import org.jetbrains.research.libsl.nodes.Constructor
 import org.jetbrains.research.libsl.nodes.ConstructorArgument
+import org.jetbrains.research.libsl.nodes.Destructor
 import org.jetbrains.research.libsl.nodes.Expression
+import org.jetbrains.research.libsl.nodes.Function
+import org.jetbrains.research.libsl.nodes.FunctionArgument
+import org.jetbrains.research.libsl.nodes.FunctionKind
 import org.jetbrains.research.libsl.nodes.ImplementedConcept
 import org.jetbrains.research.libsl.nodes.Library
 import org.jetbrains.research.libsl.nodes.LslVersion
 import org.jetbrains.research.libsl.nodes.MetaNode
 import org.jetbrains.research.libsl.nodes.NamedArgumentWithValue
+import org.jetbrains.research.libsl.nodes.Procedure
+import org.jetbrains.research.libsl.nodes.ResultVariable
 import org.jetbrains.research.libsl.nodes.Shift
 import org.jetbrains.research.libsl.nodes.State
 import org.jetbrains.research.libsl.nodes.StateKind
@@ -28,11 +35,15 @@ import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
 import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
+import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
+import org.jetbrains.research.libsl2.ast.FunctionBody
+import org.jetbrains.research.libsl2.ast.FunctionParam
 import org.jetbrains.research.libsl2.ast.Header
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
@@ -381,6 +392,8 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         parentCtx: LslContextBase,
         var automaton: Automaton?,
     ) : Translator<FunctionContext>(FunctionContext(parentCtx)) {
+        private lateinit var function: Function
+
         fun translate() {
             when (decl) {
                 is org.jetbrains.research.libsl2.ast.decl.ConstructorDecl -> translate(decl)
@@ -391,18 +404,150 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         }
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.ConstructorDecl) {
-            TODO()
+            val name = decl.name.toString()
+            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val params = translateParams(decl.params)
+            params.forEach { ctx.storeFunctionArgument(it) }
+
+            function = Constructor(
+                name,
+                params,
+                annotations,
+                hasBody = decl.body != null,
+                context = ctx,
+                isMethod = decl.isMethod,
+                entityPosition = decl.location!!.toEntityPosition(),
+            )
+
+            decl.body?.let(::translateBody)
+            automaton?.constructors?.add(function)
         }
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.DestructorDecl) {
-            TODO()
+            val name = decl.name.toString()
+            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val params = translateParams(decl.params)
+            params.forEach { ctx.storeFunctionArgument(it) }
+
+            function = Destructor(
+                name,
+                params,
+                annotations,
+                hasBody = decl.body != null,
+                context = ctx,
+                isMethod = decl.isMethod,
+                entityPosition = decl.location!!.toEntityPosition(),
+            )
+
+            decl.body?.let(::translateBody)
+            automaton?.destructors?.add(function)
         }
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.FunctionDecl) {
-            TODO()
+            val automatonName = decl.extensionFor?.toString()
+            val automatonRef = automatonName?.let { AutomatonReferenceBuilder.build(it, ctx) }
+                ?: automaton?.getReference(ctx)
+
+            if (automatonName != null) {
+                automaton = automatonRef?.resolveOrError()
+            }
+
+            val name = decl.name.toString()
+            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val params = translateParams(decl.params)
+            params.forEach { ctx.storeFunctionArgument(it) }
+
+            val targetAutomatonRef = params
+                .firstOrNull { arg ->
+                    arg.annotationUsages.any { it.annotationReference.name == "target" }
+                }
+                ?.typeReference
+                ?.toSimpleString()
+                ?.let { AutomatonReferenceBuilder.build(it, ctx) }
+                ?: automatonRef
+
+            val returnType = decl.returnType?.let { TypeTranslator(ctx).translateTypeExpr(it) }
+            val generics = translateGenerics(decl.generics, decl.typeConstraints)
+            generics.forEach { ctx.storeFunctionType(it) }
+
+            if (returnType != null) {
+                val resultVar = ResultVariable(
+                    returnType,
+                    decl.returnType!!.location!!.toEntityPosition(),
+                )
+                ctx.storeVariable(resultVar)
+            }
+
+            function = Function(
+                kind = FunctionKind.FUNCTION,
+                name,
+                automatonRef,
+                params,
+                returnType,
+                annotations,
+                hasBody = decl.body != null,
+                targetAutomatonRef = targetAutomatonRef,
+                context = ctx,
+                isMethod = decl.isMethod,
+                isStatic = decl.isStatic,
+                entityPosition = decl.location!!.toEntityPosition(),
+            )
+
+            decl.body?.let(::translateBody)
+            automaton?.localFunctions?.add(function)
         }
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.ProcDecl) {
+            val name = decl.name.toString()
+            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val params = translateParams(decl.params)
+            val generics = translateGenerics(decl.generics, decl.typeConstraints)
+
+            generics.forEach { ctx.storeFunctionType(it) }
+            params.forEach { ctx.storeFunctionArgument(it) }
+
+            val returnType = decl.returnType?.let { TypeTranslator(ctx).translateTypeExpr(it) }
+
+            if (returnType != null) {
+                val resultVar = ResultVariable(
+                    returnType,
+                    decl.returnType!!.location!!.toEntityPosition(),
+                )
+                ctx.storeVariable(resultVar)
+            }
+
+            function = Procedure(
+                name,
+                params,
+                returnType,
+                annotations,
+                hasBody = decl.body != null,
+                context = ctx,
+                isMethod = decl.isMethod,
+                entityPosition = decl.location!!.toEntityPosition(),
+            )
+
+            decl.body?.let(::translateBody)
+            compat.globalCtx.storeFunction(function)
+            automaton?.procDeclarations?.add(function)
+        }
+
+        private fun translateParams(params: List<FunctionParam>): MutableList<FunctionArgument> =
+            params.mapIndexedTo(mutableListOf()) { idx, param ->
+                val typeRef = TypeTranslator(ctx).translateTypeExpr(param.typeExpr)
+                val annotations = param.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+
+                FunctionArgument(
+                    param.name.toString(),
+                    typeRef,
+                    idx,
+                    annotations,
+                    null,
+                    param.name.location!!.toEntityPosition(),
+                )
+            }
+
+        private fun translateBody(body: FunctionBody) {
             TODO()
         }
     }
