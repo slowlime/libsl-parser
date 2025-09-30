@@ -5,22 +5,30 @@ import org.jetbrains.research.libsl.context.AutomatonContext
 import org.jetbrains.research.libsl.context.FunctionContext
 import org.jetbrains.research.libsl.context.LslContextBase
 import org.jetbrains.research.libsl.context.LslGlobalContext
+import org.jetbrains.research.libsl.errors.UnresolvedState
 import org.jetbrains.research.libsl.nodes.ActionArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.ActionDecl
 import org.jetbrains.research.libsl.nodes.Annotation
 import org.jetbrains.research.libsl.nodes.AnnotationArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.AnnotationUsage
 import org.jetbrains.research.libsl.nodes.Automaton
+import org.jetbrains.research.libsl.nodes.AutomatonConcept
+import org.jetbrains.research.libsl.nodes.ConstructorArgument
 import org.jetbrains.research.libsl.nodes.Expression
+import org.jetbrains.research.libsl.nodes.ImplementedConcept
 import org.jetbrains.research.libsl.nodes.Library
 import org.jetbrains.research.libsl.nodes.LslVersion
 import org.jetbrains.research.libsl.nodes.MetaNode
 import org.jetbrains.research.libsl.nodes.NamedArgumentWithValue
+import org.jetbrains.research.libsl.nodes.Shift
+import org.jetbrains.research.libsl.nodes.State
+import org.jetbrains.research.libsl.nodes.StateKind
 import org.jetbrains.research.libsl.nodes.VariableKind
 import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
 import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
 import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.utils.EntityPosition
@@ -90,7 +98,20 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             generics: List<org.jetbrains.research.libsl2.ast.Generic>,
             typeConstraints: List<org.jetbrains.research.libsl2.ast.TypeConstraint>,
         ): MutableList<GenericType> {
-            TODO()
+            val ordered = linkedMapOf<String, GenericType>()
+
+            for (generic in generics) {
+                ordered[generic.name.toString()] = GenericType(name = generic.name.toString(), context = ctx)
+            }
+
+            for (typeConstraint in typeConstraints) {
+                val param = typeConstraint.param.toString()
+                val constraint = TypeTranslator(ctx).translateTypeExpr(typeConstraint.bound)
+
+                ordered[param]?.constraints += constraint
+            }
+
+            return ordered.values.toMutableList()
         }
     }
 
@@ -200,8 +221,158 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
     private inner class AutomatonTranslator(val decl: org.jetbrains.research.libsl2.ast.decl.AutomatonDecl) :
         Translator<AutomatonContext>(AutomatonContext(compat.globalCtx)) {
 
+        private lateinit var automaton: Automaton
+
         fun translate() {
-            TODO()
+            val name = decl.name.typeName.toString()
+            val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(decl.typeExpr)
+            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+
+            automaton = if (decl.isConcept) {
+                Automaton(
+                    isConcept = false,
+                    name,
+                    typeRef,
+                    annotations,
+                    context = ctx,
+                    entityPosition = decl.location!!.toEntityPosition(),
+                )
+            } else {
+                AutomatonConcept(
+                    isConcept = true,
+                    name,
+                    typeRef,
+                    annotations,
+                    context = ctx,
+                    entityPosition = decl.location!!.toEntityPosition(),
+                )
+            }
+
+            decl.implementedConcepts.mapTo(automaton.implementedConcepts) { name ->
+                ImplementedConcept(name.toString(), name.location!!.toEntityPosition())
+            }
+
+            for (varDecl in decl.constructorVariables) {
+                val keyword = if (varDecl.mutable) VariableKind.VAR else VariableKind.VAL
+                val name = varDecl.name.toString()
+                val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(varDecl.typeExpr)
+                val init = varDecl.init?.let { ExprTranslator(ctx).translateExpr(it) }
+                val node = ConstructorArgument(
+                    keyword,
+                    name,
+                    typeRef,
+                    varDecl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) },
+                    init,
+                    varDecl.location!!.toEntityPosition(),
+                )
+
+                ctx.storeVariable(node)
+                automaton.constructorVariables += node
+            }
+
+            for (decl in decl.decls) {
+                when (decl) {
+                    is org.jetbrains.research.libsl2.ast.decl.ConstructorDecl -> translateConstructorDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.DestructorDecl -> translateDestructorDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.FunctionDecl -> translateFunctionDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.ProcDecl -> translateProcDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.ShiftDecl -> translateShiftDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.StateDecl -> translateStateDecl(decl)
+                    is org.jetbrains.research.libsl2.ast.decl.VariableDecl -> translateVariableDecl(decl)
+                }
+            }
+
+            compat.globalCtx.storeAutomata(automaton)
+        }
+
+        fun translateConstructorDecl(decl: org.jetbrains.research.libsl2.ast.decl.ConstructorDecl) {
+            FunctionTranslator(decl, ctx, automaton).translate()
+        }
+
+        fun translateDestructorDecl(decl: org.jetbrains.research.libsl2.ast.decl.DestructorDecl) {
+            FunctionTranslator(decl, ctx, automaton).translate()
+        }
+
+        fun translateFunctionDecl(decl: org.jetbrains.research.libsl2.ast.decl.FunctionDecl) {
+            FunctionTranslator(decl, ctx, automaton).translate()
+        }
+
+        fun translateProcDecl(decl: org.jetbrains.research.libsl2.ast.decl.ProcDecl) {
+            FunctionTranslator(decl, ctx, automaton).translate()
+        }
+
+        fun translateShiftDecl(decl: org.jetbrains.research.libsl2.ast.decl.ShiftDecl) {
+            val toState = when (val name = decl.to.toString()) {
+                "self" -> State(
+                    name,
+                    StateKind.SIMPLE,
+                    isSelf = true,
+                    entityPosition = decl.to.location!!.toEntityPosition(),
+                )
+
+                else -> automaton.states.firstOrNull { it.name == name } ?: run {
+                    compat.addError(UnresolvedState("unresolved state: $name", decl.to.location!!.toEntityPosition()))
+                    return
+                }
+            }
+
+            for (state in decl.from) {
+                val fromState = when (val name = state.toString()) {
+                    "any" -> State(
+                        name,
+                        StateKind.SIMPLE,
+                        isAny = true,
+                        entityPosition = state.location!!.toEntityPosition(),
+                    )
+
+                    else -> automaton.states.firstOrNull { it.name == name } ?: run {
+                        compat.addError(UnresolvedState("unresolved state: $name", state.location!!.toEntityPosition()))
+                        continue
+                    }
+                }
+
+                val funcRefs = decl.by.mapTo(mutableListOf()) { sig ->
+                    val name = sig.name.toString()
+                    val paramTypes = sig.params.orEmpty().mapTo(mutableListOf()) {
+                        TypeTranslator(ctx).translateTypeExpr(it)
+                    }
+
+                    FunctionReferenceBuilder.build(name = name, argTypes = paramTypes, context = ctx)
+                }
+
+                val node = Shift(fromState, toState, funcRefs, decl.location!!.toEntityPosition())
+                automaton.shifts += node
+            }
+        }
+
+        fun translateStateDecl(decl: org.jetbrains.research.libsl2.ast.decl.StateDecl) {
+            val kind = when (decl.kind) {
+                org.jetbrains.research.libsl2.ast.decl.StateDecl.Kind.Initial -> StateKind.INIT
+                org.jetbrains.research.libsl2.ast.decl.StateDecl.Kind.Regular -> StateKind.SIMPLE
+                org.jetbrains.research.libsl2.ast.decl.StateDecl.Kind.Final -> StateKind.FINISH
+            }
+
+            val node = State(decl.name.toString(), kind, entityPosition = decl.location!!.toEntityPosition())
+
+            automaton.states += node
+        }
+
+        fun translateVariableDecl(decl: org.jetbrains.research.libsl2.ast.decl.VariableDecl) {
+            val keyword = if (decl.mutable) VariableKind.VAR else VariableKind.VAL
+            val name = decl.name.toString()
+            val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(decl.typeExpr)
+            val init = decl.init?.let { ExprTranslator(ctx).translateExpr(it) }
+            val node = VariableWithInitialValue(
+                keyword,
+                name,
+                typeRef,
+                decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) },
+                init,
+                decl.location!!.toEntityPosition(),
+            )
+
+            automaton.internalVariables += node
+            ctx.storeVariable(node)
         }
     }
 

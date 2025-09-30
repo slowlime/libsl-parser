@@ -35,9 +35,11 @@ class LibSLCompat(
         return handleLoadResult(fileName, libsl2.loadFromString(fileName, canonicalPath, string))
     }
 
-    private fun addError(error: LibSLException): LslError {
+    internal fun addError(error: LibSLException): LslError {
         TODO()
     }
+
+    internal fun addError(error: LslError): LslError = error.also { libsl.errorManager.addError(error) }
 
     private fun handleLoadResult(path: String, result: org.jetbrains.research.libsl2.LibSL.LoadResult): Library =
         when (result) {
