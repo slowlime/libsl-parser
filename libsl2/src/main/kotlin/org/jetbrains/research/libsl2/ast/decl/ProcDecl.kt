@@ -25,7 +25,7 @@ data class ProcDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLikeDecl, StructMemberDecl, AutomatonMemberDecl, Entity<FunctionLikeDecl> {
+) : FunctionLikeDecl, AutomatonMemberDecl, Entity<FunctionLikeDecl> {
     override lateinit var primaryDef: Def.Primary<FunctionLikeDecl>
     lateinit var paramScope: MutableScope
 }

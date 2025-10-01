@@ -39,17 +39,23 @@ import org.jetbrains.research.libsl.nodes.Shift
 import org.jetbrains.research.libsl.nodes.State
 import org.jetbrains.research.libsl.nodes.StateKind
 import org.jetbrains.research.libsl.nodes.Statement
+import org.jetbrains.research.libsl.nodes.Variable
 import org.jetbrains.research.libsl.nodes.VariableDeclaration
 import org.jetbrains.research.libsl.nodes.VariableKind
 import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
+import org.jetbrains.research.libsl.nodes.references.GenericTypeReference
 import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.GenericType
+import org.jetbrains.research.libsl.type.GenericTypeBound
+import org.jetbrains.research.libsl.type.RealType
+import org.jetbrains.research.libsl.type.StructuredType
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
 import org.jetbrains.research.libsl2.ast.Header
@@ -132,6 +138,21 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
             return ordered.values.toMutableList()
         }
+
+        fun translateParams(params: List<org.jetbrains.research.libsl2.ast.FunctionParam>): MutableList<FunctionArgument> =
+            params.mapIndexedTo(mutableListOf()) { idx, param ->
+                val typeRef = TypeTranslator(ctx).translateTypeExpr(param.typeExpr)
+                val annotations = param.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+
+                FunctionArgument(
+                    param.name.toString(),
+                    typeRef,
+                    idx,
+                    annotations,
+                    null,
+                    param.name.location!!.toEntityPosition(),
+                )
+            }
     }
 
     private inner class TopLevelDeclTranslator : Translator<LslGlobalContext>(compat.globalCtx) {
@@ -245,7 +266,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         fun translate() {
             val name = decl.name.typeName.toString()
             val typeRef = TypeTranslator(compat.globalCtx).translateTypeExpr(decl.typeExpr)
-            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
 
             automaton = if (decl.isConcept) {
                 Automaton(
@@ -280,7 +301,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                     keyword,
                     name,
                     typeRef,
-                    varDecl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) },
+                    varDecl.annotations.mapTo(mutableListOf(), ::translateAnnotation),
                     init,
                     varDecl.location!!.toEntityPosition(),
                 )
@@ -385,7 +406,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 keyword,
                 name,
                 typeRef,
-                decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) },
+                decl.annotations.mapTo(mutableListOf(), ::translateAnnotation),
                 init,
                 decl.location!!.toEntityPosition(),
             )
@@ -413,7 +434,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.ConstructorDecl) {
             val name = decl.name.toString()
-            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val params = translateParams(decl.params)
             params.forEach { ctx.storeFunctionArgument(it) }
 
@@ -433,7 +454,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.DestructorDecl) {
             val name = decl.name.toString()
-            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val params = translateParams(decl.params)
             params.forEach { ctx.storeFunctionArgument(it) }
 
@@ -461,7 +482,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             }
 
             val name = decl.name.toString()
-            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val params = translateParams(decl.params)
             params.forEach { ctx.storeFunctionArgument(it) }
 
@@ -507,7 +528,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
         private fun translate(decl: org.jetbrains.research.libsl2.ast.decl.ProcDecl) {
             val name = decl.name.toString()
-            val annotations = decl.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
             val params = translateParams(decl.params)
             val generics = translateGenerics(decl.generics, decl.typeConstraints)
 
@@ -539,21 +560,6 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             compat.globalCtx.storeFunction(function)
             automaton?.procDeclarations?.add(function)
         }
-
-        private fun translateParams(params: List<org.jetbrains.research.libsl2.ast.FunctionParam>): MutableList<FunctionArgument> =
-            params.mapIndexedTo(mutableListOf()) { idx, param ->
-                val typeRef = TypeTranslator(ctx).translateTypeExpr(param.typeExpr)
-                val annotations = param.annotations.mapTo(mutableListOf()) { translateAnnotation(it) }
-
-                FunctionArgument(
-                    param.name.toString(),
-                    typeRef,
-                    idx,
-                    annotations,
-                    null,
-                    param.name.location!!.toEntityPosition(),
-                )
-            }
 
         private fun translateBody(body: org.jetbrains.research.libsl2.ast.FunctionBody) {
             for (contract in body.contracts) {
@@ -734,9 +740,211 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         }
     }
 
+    data class TypeIdentifier(
+        val name: String,
+        val location: Location?,
+        val fullName: List<String>,
+        val typeArgs: List<org.jetbrains.research.libsl2.ast.type.TypeArg>,
+        val isPointer: Boolean,
+    ) {
+        constructor(name: String, location: Location?) : this(name, location, listOf(name), listOf(), isPointer = false)
+    }
+
     private inner class TypeTranslator(ctx: LslContextBase) : Translator<LslContextBase>(ctx) {
+        private fun toTypeIdentifier(
+            typeExpr: org.jetbrains.research.libsl2.ast.type.TypeExpr,
+            allowPointer: Boolean,
+        ): TypeIdentifier =
+            when (typeExpr) {
+                is org.jetbrains.research.libsl2.ast.type.NameTypeExpr -> TypeIdentifier(
+                    typeExpr.typeName.toString(),
+                    typeExpr.typeName.location,
+                    typeExpr.typeName.components.map { it.toString() },
+                    typeExpr.typeArgs.orEmpty(),
+                    isPointer = false,
+                )
+
+                is org.jetbrains.research.libsl2.ast.type.PointerTypeExpr -> {
+                    if (!allowPointer) {
+                        throw UnexpectedPointerTypeExprException(typeExpr.location)
+                    }
+
+                    val base = typeExpr.base
+
+                    if (base !is org.jetbrains.research.libsl2.ast.type.NameTypeExpr) {
+                        throw ExpectedNameTypeExprException(typeExpr.location)
+                    }
+
+                    TypeIdentifier(
+                        base.typeName.toString(),
+                        base.typeName.location,
+                        base.typeName.components.map { it.toString() },
+                        base.typeArgs.orEmpty(),
+                        isPointer = true,
+                    )
+                }
+
+                else -> throw ExpectedNameTypeExprException(typeExpr.location)
+            }
+
+        private fun getRealType(typeIdent: TypeIdentifier): RealType {
+            val nameParts = typeIdent.fullName
+
+            val typeArgs = typeIdent.typeArgs.mapTo(mutableListOf()) { typeArg ->
+                val type = getRealType(typeArg)
+
+                type.getReference(ctx, when (typeArg) {
+                    is org.jetbrains.research.libsl2.ast.type.TypeArg.TypeExpr -> translateVariance(typeArg.variance)
+                    is org.jetbrains.research.libsl2.ast.type.TypeArg.Wildcard -> GenericTypeBound.EMPTY
+                })
+            }
+
+            val realType = RealType(
+                nameParts,
+                isPointer = typeIdent.isPointer,
+                typeArgs,
+                ctx,
+                typeIdent.location!!.toEntityPosition(),
+            )
+
+            val prevType = ctx.resolveType(realType.getReference(ctx))
+
+            if (prevType != null && prevType is RealType) {
+                return prevType
+            }
+
+            ctx.storeType(realType)
+
+            return realType
+        }
+
+        private fun getRealType(typeArg: org.jetbrains.research.libsl2.ast.type.TypeArg): RealType =
+            when (typeArg) {
+                is org.jetbrains.research.libsl2.ast.type.TypeArg.Wildcard -> getRealType(TypeIdentifier(
+                    "?",
+                    typeArg.location,
+                    listOf(),
+                    listOf(),
+                    isPointer = false,
+                ))
+
+                is org.jetbrains.research.libsl2.ast.type.TypeArg.TypeExpr -> {
+                    getRealType(toTypeIdentifier(typeArg.typeExpr, allowPointer = true))
+                }
+            }
+
+        private fun translateVariance(variance: org.jetbrains.research.libsl2.ast.Variance?): GenericTypeBound =
+            when (variance) {
+                null, org.jetbrains.research.libsl2.ast.Variance.Invariant -> GenericTypeBound.EMPTY
+                org.jetbrains.research.libsl2.ast.Variance.Covariant -> GenericTypeBound.OUT
+                org.jetbrains.research.libsl2.ast.Variance.Contravariant -> GenericTypeBound.IN
+            }
+
+        private fun makeGenericTypeRefs(generics: List<org.jetbrains.research.libsl2.ast.Generic>): MutableList<TypeReference> =
+            generics.mapTo(mutableListOf()) { generic ->
+                val type = getRealType(TypeIdentifier(generic.name.toString(), generic.name.location))
+
+                when (generic.variance) {
+                    null, org.jetbrains.research.libsl2.ast.Variance.Invariant -> type.getReference(ctx)
+
+                    org.jetbrains.research.libsl2.ast.Variance.Covariant -> {
+                        type.getReference(ctx, GenericTypeBound.OUT)
+                    }
+
+                    org.jetbrains.research.libsl2.ast.Variance.Contravariant -> {
+                        type.getReference(ctx, GenericTypeBound.IN)
+                    }
+                }
+            }
+
+        private fun translateQualifiedTypeName(typeName: org.jetbrains.research.libsl2.ast.QualifiedTypeName): TypeReference {
+            val name = typeName.typeName.toString()
+            val generics = makeGenericTypeRefs(typeName.generics)
+
+            return TypeReferenceBuilder.build(name, GenericTypeBound.EMPTY, generics, isPointer = false, ctx)
+        }
+
         fun translateStructDecl(decl: org.jetbrains.research.libsl2.ast.decl.StructDecl): TypeReference {
-            TODO()
+            // these two functions perform struct member translation in their own uniquely wrong way:
+            // that's how libsl1 does it...
+
+            fun translateFunctionDecl(decl: org.jetbrains.research.libsl2.ast.decl.FunctionDecl): Function {
+                val funcCtx = FunctionContext(ctx)
+                val name = decl.name.toString()
+                val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+                val params = translateParams(decl.params)
+                val returnType = decl.returnType?.let { TypeTranslator(ctx).translateTypeExpr(it) }
+
+                params.forEach { funcCtx.storeFunctionArgument(it) }
+
+                return Function(
+                    kind = FunctionKind.FUNCTION,
+                    name,
+                    null,
+                    params,
+                    returnType,
+                    annotations,
+                    hasBody = false,
+                    targetAutomatonRef = null,
+                    context = funcCtx,
+                    isMethod = decl.isMethod,
+                    isStatic = decl.isStatic,
+                    entityPosition = decl.location!!.toEntityPosition(),
+                )
+            }
+
+            fun translateVariableDecl(decl: org.jetbrains.research.libsl2.ast.decl.VariableDecl): Variable {
+                val keyword = if (decl.mutable) VariableKind.VAR else VariableKind.VAL
+                val name = decl.name.toString()
+                val typeRef = TypeTranslator(ctx).translateTypeExpr(decl.typeExpr)
+                val init = decl.init?.let { ExprTranslator(ctx).translateExpr(it) }
+
+                return VariableWithInitialValue(
+                    keyword,
+                    name,
+                    typeRef,
+                    decl.annotations.mapTo(mutableListOf(), ::translateAnnotation),
+                    init,
+                    decl.location!!.toEntityPosition(),
+                )
+            }
+
+            val name = decl.typeName.typeName.toString()
+            val isTypeIdent = decl.isType?.let { toTypeIdentifier(it, allowPointer = false) }
+            val forTypes = decl.forTypes.mapTo(mutableListOf()) { toTypeIdentifier(it, allowPointer = false).name }
+            val generics = translateGenerics(decl.typeName.generics, decl.typeConstraints)
+
+            val variables = mutableListOf<Variable>()
+            val functions = mutableListOf<Function>()
+
+            for (decl in decl.decls) {
+                when (decl) {
+                    is org.jetbrains.research.libsl2.ast.decl.FunctionDecl ->
+                        functions += translateFunctionDecl(decl)
+
+                    is org.jetbrains.research.libsl2.ast.decl.VariableDecl ->
+                        variables += translateVariableDecl(decl)
+                }
+            }
+
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+            val typeIdent = translateQualifiedTypeName(decl.typeName)
+
+            val type = StructuredType(
+                name,
+                variables,
+                functions,
+                generics,
+                isTypeIdent?.name,
+                forTypes,
+                annotations,
+                ctx,
+                decl.location!!.toEntityPosition(),
+                (typeIdent as? GenericTypeReference)?.genericReferences ?: mutableListOf(),
+            )
+            ctx.storeType(type)
+
+            return typeIdent
         }
 
         fun translateSemanticTypeDecl(decl: org.jetbrains.research.libsl2.ast.decl.SemanticTypeDecl.Simple): TypeReference {
