@@ -45,7 +45,10 @@ import org.jetbrains.research.libsl.nodes.VariableDeclaration
 import org.jetbrains.research.libsl.nodes.VariableKind
 import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
 import org.jetbrains.research.libsl.nodes.references.GenericTypeReference
+import org.jetbrains.research.libsl.nodes.references.IntersectionExpressionTypeReference
+import org.jetbrains.research.libsl.nodes.references.LiteralTypeReference
 import org.jetbrains.research.libsl.nodes.references.TypeReference
+import org.jetbrains.research.libsl.nodes.references.UnionExpressionTypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder.getReference
@@ -54,21 +57,32 @@ import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuild
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.ArrayType
+import org.jetbrains.research.libsl.type.BoolType
+import org.jetbrains.research.libsl.type.CharType
 import org.jetbrains.research.libsl.type.EnumLikeSemanticType
 import org.jetbrains.research.libsl.type.EnumType
+import org.jetbrains.research.libsl.type.Float64Type
 import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.type.GenericTypeBound
+import org.jetbrains.research.libsl.type.Int64Type
+import org.jetbrains.research.libsl.type.NullType
 import org.jetbrains.research.libsl.type.RealType
 import org.jetbrains.research.libsl.type.SimpleType
+import org.jetbrains.research.libsl.type.StringType
 import org.jetbrains.research.libsl.type.StructuredType
 import org.jetbrains.research.libsl.type.Type
 import org.jetbrains.research.libsl.type.TypeAlias
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
+import org.jetbrains.research.libsl2.ast.BoolLit
+import org.jetbrains.research.libsl2.ast.CharLit
+import org.jetbrains.research.libsl2.ast.FloatLit
 import org.jetbrains.research.libsl2.ast.Header
 import org.jetbrains.research.libsl2.ast.IntLit
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
+import org.jetbrains.research.libsl2.ast.NullLit
+import org.jetbrains.research.libsl2.ast.StringLit
 import org.jetbrains.research.libsl2.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl2.location.Location
 
@@ -1056,7 +1070,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 entries,
                 annotations,
                 ctx,
-                decl.location!!.toEntityPosition()
+                decl.location!!.toEntityPosition(),
             )
 
             ctx.storeType(type)
@@ -1064,8 +1078,83 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             return translateQualifiedTypeName(decl.typeName)
         }
 
-        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.TypeExpr): TypeReference {
-            TODO()
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.TypeExpr): TypeReference =
+            when (typeExpr) {
+                is org.jetbrains.research.libsl2.ast.type.IntersectionTypeExpr -> translateTypeExpr(typeExpr)
+                is org.jetbrains.research.libsl2.ast.type.NameTypeExpr -> translateTypeExpr(typeExpr)
+                is org.jetbrains.research.libsl2.ast.type.PointerTypeExpr -> translateTypeExpr(typeExpr)
+                is org.jetbrains.research.libsl2.ast.type.PrimitiveLitTypeExpr -> translateTypeExpr(typeExpr)
+                is org.jetbrains.research.libsl2.ast.type.UnionTypeExpr -> translateTypeExpr(typeExpr)
+            }
+
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.IntersectionTypeExpr): TypeReference {
+            val lhs = translateTypeExpr(typeExpr.lhs)
+            val rhs = translateTypeExpr(typeExpr.rhs)
+
+            return IntersectionExpressionTypeReference(lhs, rhs, ctx)
+        }
+
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.NameTypeExpr): TypeReference {
+            val typeIdent = toTypeIdentifier(typeExpr, allowPointer = false)
+            val typeArgs = translateTypeArgs(typeIdent.typeArgs)
+
+            return TypeReferenceBuilder.build(typeIdent.name, GenericTypeBound.EMPTY, typeArgs, isPointer = false, ctx)
+        }
+
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.PointerTypeExpr): TypeReference {
+            val typeIdent = toTypeIdentifier(typeExpr, allowPointer = true)
+            val typeArgs = translateTypeArgs(typeIdent.typeArgs)
+
+            return TypeReferenceBuilder.build(typeIdent.name, GenericTypeBound.EMPTY, typeArgs, isPointer = true, ctx)
+        }
+
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.PrimitiveLitTypeExpr): TypeReference =
+            when (val lit = typeExpr.lit) {
+                is BoolLit -> LiteralTypeReference(lit.value.toString(), BoolType(ctx), ctx)
+
+                is CharLit -> {
+                    val codepoint = lit.value
+                    val value = when {
+                        codepoint > 0xffff -> throw NonBmpCharException(lit.location)
+                        codepoint == 0 -> "'\\0'"
+                        codepoint !in 0x20..<0x7f -> "'\\u%04x'".format(codepoint)
+                        else -> "'${Char(codepoint)}'"
+                    }
+
+                    LiteralTypeReference(value, CharType(ctx), ctx)
+                }
+
+                is FloatLit.F32 -> LiteralTypeReference(lit.value.toString(), Float64Type(ctx), ctx)
+                is FloatLit.F64 -> LiteralTypeReference(lit.value.toString(), Float64Type(ctx), ctx)
+                is IntLit.I16 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.I32 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.I64 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.I8 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.U16 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.U32 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.U64 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is IntLit.U8 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
+                is NullLit -> LiteralTypeReference("null", NullType(context = ctx), ctx)
+
+                is StringLit -> {
+                    val value = "\"" + lit.value.replace(Regex("[\"\n\r]")) {
+                        when (it.value) {
+                            "\"" -> "\\\""
+                            "\n" -> "\\n"
+                            "\r" -> "\\r"
+                            else -> error("should be unreachable")
+                        }
+                    } + "\""
+
+                    LiteralTypeReference(value, StringType(ctx), ctx)
+                }
+            }
+
+        fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.UnionTypeExpr): TypeReference {
+            val lhs = translateTypeExpr(typeExpr.lhs)
+            val rhs = translateTypeExpr(typeExpr.rhs)
+
+            return UnionExpressionTypeReference(lhs, rhs, ctx)
         }
     }
 

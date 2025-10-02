@@ -18,3 +18,8 @@ class UnexpectedPointerTypeExprException(location: Location?) : TranslationExcep
     "encountered an unexpected pointer type expression (${location.inAt()})",
     location,
 )
+
+class NonBmpCharException(location: Location?) : TranslationException(
+    "libsl1 does not support non-BMP character literals (${location.inAt()})",
+    location,
+)
