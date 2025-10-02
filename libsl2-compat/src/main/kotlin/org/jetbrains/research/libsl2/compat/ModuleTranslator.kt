@@ -55,15 +55,18 @@ import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuild
 import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.ArrayType
 import org.jetbrains.research.libsl.type.EnumLikeSemanticType
+import org.jetbrains.research.libsl.type.EnumType
 import org.jetbrains.research.libsl.type.GenericType
 import org.jetbrains.research.libsl.type.GenericTypeBound
 import org.jetbrains.research.libsl.type.RealType
 import org.jetbrains.research.libsl.type.SimpleType
 import org.jetbrains.research.libsl.type.StructuredType
 import org.jetbrains.research.libsl.type.Type
+import org.jetbrains.research.libsl.type.TypeAlias
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
 import org.jetbrains.research.libsl2.ast.Header
+import org.jetbrains.research.libsl2.ast.IntLit
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
 import org.jetbrains.research.libsl2.ast.decl.GlobalDecl
@@ -1020,11 +1023,45 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         }
 
         fun translateTypeAliasDecl(decl: org.jetbrains.research.libsl2.ast.decl.TypeAliasDecl): TypeReference {
-            TODO()
+            val name = decl.typeName.typeName.toString()
+            val typeRef = translateTypeExpr(decl.typeExpr)
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+
+            val type = TypeAlias(
+                name,
+                typeRef,
+                annotations,
+                ctx,
+                decl.location!!.toEntityPosition(),
+            )
+
+            ctx.storeType(type)
+
+            return translateQualifiedTypeName(decl.typeName)
         }
 
         fun translateEnumDecl(decl: org.jetbrains.research.libsl2.ast.decl.EnumDecl): TypeReference {
-            TODO()
+            val name = decl.typeName.typeName.toString()
+            val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
+
+            val entries = decl.variants.associate { variant ->
+                val name = variant.name.toString()
+                val expr = ExprTranslator(ctx).translateIntLit(variant.value)
+
+                name to expr
+            }
+
+            val type = EnumType(
+                name,
+                entries,
+                annotations,
+                ctx,
+                decl.location!!.toEntityPosition()
+            )
+
+            ctx.storeType(type)
+
+            return translateQualifiedTypeName(decl.typeName)
         }
 
         fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.TypeExpr): TypeReference {
@@ -1034,6 +1071,10 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
     private inner class ExprTranslator(ctx: LslContextBase) : Translator<LslContextBase>(ctx) {
         fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.Expr): Expression {
+            TODO()
+        }
+
+        fun translateIntLit(lit: IntLit): Atomic {
             TODO()
         }
 
