@@ -355,12 +355,6 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                             .orThrow(decl.name)
                     }
 
-                    is ProcDecl -> {
-                        decl.primaryDef = currentScope
-                            .define(decl.name.toString(), decl.name.location, decl)
-                            .orThrow(decl.name)
-                    }
-
                     is VariableDecl -> {
                         decl.primaryDef = currentScope
                             .define(decl.name.toString(), decl.name.location, Binding.of(decl))
