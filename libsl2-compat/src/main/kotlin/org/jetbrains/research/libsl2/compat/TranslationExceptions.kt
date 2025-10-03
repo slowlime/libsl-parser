@@ -23,3 +23,8 @@ class NonBmpCharException(location: Location?) : TranslationException(
     "libsl1 does not support non-BMP character literals (${location.inAt()})",
     location,
 )
+
+class CalleeNotNameAccessException(location: Location?) : TranslationException(
+    "the callee must be a plain-name access expression (${location.inAt()})",
+    location,
+)

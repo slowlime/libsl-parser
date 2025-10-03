@@ -8,14 +8,24 @@ import org.jetbrains.research.libsl.context.LslGlobalContext
 import org.jetbrains.research.libsl.errors.UnresolvedState
 import org.jetbrains.research.libsl.nodes.ActionArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.ActionDecl
+import org.jetbrains.research.libsl.nodes.ActionExpression
+import org.jetbrains.research.libsl.nodes.ActionUsage
 import org.jetbrains.research.libsl.nodes.Annotation
 import org.jetbrains.research.libsl.nodes.AnnotationArgumentDescriptor
 import org.jetbrains.research.libsl.nodes.AnnotationUsage
+import org.jetbrains.research.libsl.nodes.ArithmeticBinaryOps
+import org.jetbrains.research.libsl.nodes.ArithmeticUnaryOp
+import org.jetbrains.research.libsl.nodes.ArrayAccess
+import org.jetbrains.research.libsl.nodes.ArrayLiteral
 import org.jetbrains.research.libsl.nodes.AssignOps
 import org.jetbrains.research.libsl.nodes.Assignment
 import org.jetbrains.research.libsl.nodes.Atomic
 import org.jetbrains.research.libsl.nodes.Automaton
 import org.jetbrains.research.libsl.nodes.AutomatonConcept
+import org.jetbrains.research.libsl.nodes.BinaryOpExpression
+import org.jetbrains.research.libsl.nodes.BoolLiteral
+import org.jetbrains.research.libsl.nodes.CallAutomatonConstructor
+import org.jetbrains.research.libsl.nodes.CharacterLiteral
 import org.jetbrains.research.libsl.nodes.Constructor
 import org.jetbrains.research.libsl.nodes.ConstructorArgument
 import org.jetbrains.research.libsl.nodes.Contract
@@ -24,23 +34,39 @@ import org.jetbrains.research.libsl.nodes.Destructor
 import org.jetbrains.research.libsl.nodes.ElseStatement
 import org.jetbrains.research.libsl.nodes.Expression
 import org.jetbrains.research.libsl.nodes.ExpressionStatement
+import org.jetbrains.research.libsl.nodes.FloatLiteral
 import org.jetbrains.research.libsl.nodes.Function
 import org.jetbrains.research.libsl.nodes.FunctionArgument
 import org.jetbrains.research.libsl.nodes.FunctionKind
+import org.jetbrains.research.libsl.nodes.HasAutomatonConcept
 import org.jetbrains.research.libsl.nodes.IfStatement
 import org.jetbrains.research.libsl.nodes.ImplementedConcept
+import org.jetbrains.research.libsl.nodes.IntegerLiteral
 import org.jetbrains.research.libsl.nodes.Library
 import org.jetbrains.research.libsl.nodes.LslVersion
 import org.jetbrains.research.libsl.nodes.MetaNode
 import org.jetbrains.research.libsl.nodes.NamedArgumentWithValue
+import org.jetbrains.research.libsl.nodes.NullLiteral
+import org.jetbrains.research.libsl.nodes.OldValue
+import org.jetbrains.research.libsl.nodes.ProcExpression
 import org.jetbrains.research.libsl.nodes.Procedure
+import org.jetbrains.research.libsl.nodes.ProcedureCall
 import org.jetbrains.research.libsl.nodes.QualifiedAccess
 import org.jetbrains.research.libsl.nodes.ResultVariable
 import org.jetbrains.research.libsl.nodes.Shift
 import org.jetbrains.research.libsl.nodes.State
 import org.jetbrains.research.libsl.nodes.StateKind
 import org.jetbrains.research.libsl.nodes.Statement
+import org.jetbrains.research.libsl.nodes.StringLiteral
+import org.jetbrains.research.libsl.nodes.ThisAccess
+import org.jetbrains.research.libsl.nodes.TypeOperationExpression
+import org.jetbrains.research.libsl.nodes.UnaryOpExpression
+import org.jetbrains.research.libsl.nodes.UnsignedInt16Literal
+import org.jetbrains.research.libsl.nodes.UnsignedInt32Literal
+import org.jetbrains.research.libsl.nodes.UnsignedInt64Literal
+import org.jetbrains.research.libsl.nodes.UnsignedInt8Literal
 import org.jetbrains.research.libsl.nodes.Variable
+import org.jetbrains.research.libsl.nodes.VariableAccess
 import org.jetbrains.research.libsl.nodes.VariableDeclaration
 import org.jetbrains.research.libsl.nodes.VariableKind
 import org.jetbrains.research.libsl.nodes.VariableWithInitialValue
@@ -49,12 +75,16 @@ import org.jetbrains.research.libsl.nodes.references.IntersectionExpressionTypeR
 import org.jetbrains.research.libsl.nodes.references.LiteralTypeReference
 import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.UnionExpressionTypeReference
+import org.jetbrains.research.libsl.nodes.references.WildcardTypeReference
+import org.jetbrains.research.libsl.nodes.references.builders.ActionDeclReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder.getReference
+import org.jetbrains.research.libsl.nodes.references.builders.AutomatonStateReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
+import org.jetbrains.research.libsl.nodes.references.builders.VariableReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.ArrayType
 import org.jetbrains.research.libsl.type.BoolType
@@ -74,15 +104,9 @@ import org.jetbrains.research.libsl.type.Type
 import org.jetbrains.research.libsl.type.TypeAlias
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
-import org.jetbrains.research.libsl2.ast.BoolLit
-import org.jetbrains.research.libsl2.ast.CharLit
-import org.jetbrains.research.libsl2.ast.FloatLit
 import org.jetbrains.research.libsl2.ast.Header
-import org.jetbrains.research.libsl2.ast.IntLit
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
-import org.jetbrains.research.libsl2.ast.NullLit
-import org.jetbrains.research.libsl2.ast.StringLit
 import org.jetbrains.research.libsl2.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl2.location.Location
 
@@ -175,6 +199,19 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                     param.name.location!!.toEntityPosition(),
                 )
             }
+
+        fun encodeCharLit(lit: org.jetbrains.research.libsl2.ast.CharLit): String {
+            val codepoint = lit.value
+            val value = when {
+                codepoint > 0xffff -> throw NonBmpCharException(lit.location)
+                codepoint == 0 -> "\\0"
+                codepoint == '\''.code -> "\\'"
+                codepoint !in 0x20..<0x7f -> "\\u%04x".format(codepoint)
+                else -> "${Char(codepoint)}"
+            }
+
+            return "'$value'"
+        }
     }
 
     private inner class TopLevelDeclTranslator : Translator<LslGlobalContext>(compat.globalCtx) {
@@ -650,7 +687,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             stmt: org.jetbrains.research.libsl2.ast.stmt.AssignStmt,
             statements: MutableList<Statement>,
         ) {
-            val assignee = ExprTranslator(ctx).translateAccess(stmt.lhs)
+            val assignee = ExprTranslator(ctx).translateAccess(stmt.lhs).head
 
             val op = when (stmt.inPlaceOp) {
                 null -> AssignOps.ASSIGN
@@ -888,7 +925,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 }
             }
 
-        private fun translateTypeArgs(typeArgs: List<org.jetbrains.research.libsl2.ast.type.TypeArg>): MutableList<TypeReference> =
+        fun translateTypeArgs(typeArgs: List<org.jetbrains.research.libsl2.ast.type.TypeArg>): MutableList<TypeReference> =
             typeArgs.mapTo(mutableListOf()) { typeArg ->
                 val type = getRealType(typeArg)
 
@@ -1060,7 +1097,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
             val entries = decl.variants.associate { variant ->
                 val name = variant.name.toString()
-                val expr = ExprTranslator(ctx).translateIntLit(variant.value)
+                val expr = ExprTranslator(ctx).translateLit(variant.value)
 
                 name to expr
             }
@@ -1110,33 +1147,83 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
         fun translateTypeExpr(typeExpr: org.jetbrains.research.libsl2.ast.type.PrimitiveLitTypeExpr): TypeReference =
             when (val lit = typeExpr.lit) {
-                is BoolLit -> LiteralTypeReference(lit.value.toString(), BoolType(ctx), ctx)
+                is org.jetbrains.research.libsl2.ast.BoolLit -> LiteralTypeReference(
+                    lit.value.toString(),
+                    BoolType(ctx),
+                    ctx,
+                )
 
-                is CharLit -> {
-                    val codepoint = lit.value
-                    val value = when {
-                        codepoint > 0xffff -> throw NonBmpCharException(lit.location)
-                        codepoint == 0 -> "'\\0'"
-                        codepoint !in 0x20..<0x7f -> "'\\u%04x'".format(codepoint)
-                        else -> "'${Char(codepoint)}'"
-                    }
-
-                    LiteralTypeReference(value, CharType(ctx), ctx)
+                is org.jetbrains.research.libsl2.ast.CharLit -> {
+                    LiteralTypeReference(encodeCharLit(lit), CharType(ctx), ctx)
                 }
 
-                is FloatLit.F32 -> LiteralTypeReference(lit.value.toString(), Float64Type(ctx), ctx)
-                is FloatLit.F64 -> LiteralTypeReference(lit.value.toString(), Float64Type(ctx), ctx)
-                is IntLit.I16 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.I32 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.I64 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.I8 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.U16 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.U32 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.U64 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is IntLit.U8 -> LiteralTypeReference(lit.value.toString(), Int64Type(ctx), ctx)
-                is NullLit -> LiteralTypeReference("null", NullType(context = ctx), ctx)
+                is org.jetbrains.research.libsl2.ast.FloatLit.F32 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Float64Type(ctx),
+                    ctx,
+                )
 
-                is StringLit -> {
+                is org.jetbrains.research.libsl2.ast.FloatLit.F64 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Float64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.I16 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.I32 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.I64 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.I8 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.U16 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.U32 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.U64 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.IntLit.U8 -> LiteralTypeReference(
+                    lit.value.toString(),
+                    Int64Type(ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.NullLit -> LiteralTypeReference(
+                    "null",
+                    NullType(context = ctx),
+                    ctx,
+                )
+
+                is org.jetbrains.research.libsl2.ast.StringLit -> {
                     val value = "\"" + lit.value.replace(Regex("[\"\n\r]")) {
                         when (it.value) {
                             "\"" -> "\\\""
@@ -1158,17 +1245,291 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         }
     }
 
+    private data class TranslatedAccess(val head: QualifiedAccess, val tail: QualifiedAccess)
+
     private inner class ExprTranslator(ctx: LslContextBase) : Translator<LslContextBase>(ctx) {
-        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.Expr): Expression {
-            TODO()
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.Expr): Expression = when (expr) {
+            is org.jetbrains.research.libsl2.ast.expr.AccessExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.ActionCallExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.ArrayLitExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.BinaryExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.CastExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.HasConceptExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.InstantiationExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.PrevExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.PrimitiveLitExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.ProcCallExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.TypeCmpExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.UnaryExpr -> translateExpr(expr)
         }
 
-        fun translateIntLit(lit: IntLit): Atomic {
-            TODO()
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.AccessExpr): Expression =
+            translateAccess(expr.access).head
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.ActionCallExpr): Expression {
+            val name = expr.name.toString()
+
+            if (name.any { it.isLowerCase() }) {
+                throw IllegalArgumentException("Action names must be in upper case")
+            }
+
+            val args = expr.args.mapTo(mutableListOf(), ::translateExpr)
+            val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
+            val argTypes = args.map { arg -> ctx.typeInferrer.getExpressionType(arg).getReference(ctx) }
+            val actionRef = ActionDeclReferenceBuilder.build(name, argTypes, ctx)
+            val actionUse = ActionUsage(actionRef, typeArgs, args, expr.location!!.toEntityPosition())
+
+            return ActionExpression(actionUse, expr.location!!.toEntityPosition())
         }
 
-        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.Access): QualifiedAccess {
-            TODO()
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.ArrayLitExpr): Expression =
+            ArrayLiteral(
+                value = expr.elems.map(::translateExpr),
+                entityPosition = expr.location!!.toEntityPosition(),
+            )
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.BinaryExpr): Expression {
+            val lhs = translateExpr(expr.lhs)
+            val rhs = translateExpr(expr.rhs)
+
+            val op = when (expr.op) {
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Mul -> ArithmeticBinaryOps.MUL
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Div -> ArithmeticBinaryOps.DIV
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Mod -> ArithmeticBinaryOps.MOD
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Add -> ArithmeticBinaryOps.ADD
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Sub -> ArithmeticBinaryOps.SUB
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Sal -> ArithmeticBinaryOps.L_SHIFT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Sar -> ArithmeticBinaryOps.R_SHIFT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Shl -> ArithmeticBinaryOps.UNSIGNED_L_SHIFT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Shr -> ArithmeticBinaryOps.UNSIGNED_R_SHIFT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.BitOr -> ArithmeticBinaryOps.BIT_OR
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.BitXor -> ArithmeticBinaryOps.XOR
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.BitAnd -> ArithmeticBinaryOps.AND
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Lt -> ArithmeticBinaryOps.LT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Le -> ArithmeticBinaryOps.LT_EQ
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Gt -> ArithmeticBinaryOps.GT
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Ge -> ArithmeticBinaryOps.GT_EQ
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Eq -> ArithmeticBinaryOps.EQ
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Ne -> ArithmeticBinaryOps.NOT_EQ
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Or -> ArithmeticBinaryOps.LOG_OR
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.And -> ArithmeticBinaryOps.LOG_AND
+            }
+
+            return BinaryOpExpression(lhs, rhs, op, expr.location!!.toEntityPosition())
+        }
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.CastExpr): Expression = TypeOperationExpression(
+            "as",
+            translateExpr(expr.lhs),
+            TypeTranslator(ctx).translateTypeExpr(expr.rhs),
+            expr.location!!.toEntityPosition(),
+        )
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.HasConceptExpr): Expression =
+            HasAutomatonConcept(
+                translateAccess(expr.lhs).head,
+                AutomatonReferenceBuilder.build(expr.concept.toString(), ctx),
+                expr.location!!.toEntityPosition(),
+            )
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.InstantiationExpr): Expression {
+            val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
+            val automatonRef = AutomatonReferenceBuilder.build(expr.name.toString(), ctx, typeArgs)
+
+            if (typeArgs.any { it is WildcardTypeReference }) {
+                // this message is T_T
+                error("Constructor invoke can't contain WildCards")
+            }
+
+            val args = expr.args.mapNotNull { arg ->
+                when (arg) {
+                    is org.jetbrains.research.libsl2.ast.expr.InstantiationExpr.Arg.State -> null
+
+                    is org.jetbrains.research.libsl2.ast.expr.InstantiationExpr.Arg.Var -> NamedArgumentWithValue(
+                        arg.name.toString(),
+                        translateExpr(arg.value),
+                        arg.name.location!!.toEntityPosition(),
+                    )
+                }
+            }
+
+            val stateName = expr.args
+                .firstNotNullOfOrNull { it as? org.jetbrains.research.libsl2.ast.expr.InstantiationExpr.Arg.State }
+                ?.let { it.value as? org.jetbrains.research.libsl2.ast.expr.AccessExpr }
+                ?.let { it.access as? org.jetbrains.research.libsl2.ast.access.NameAccess }
+                ?.name
+                ?.toString()
+            check(stateName != null)
+
+            val stateRef = AutomatonStateReferenceBuilder.build(stateName, automatonRef, ctx)
+
+            return CallAutomatonConstructor(automatonRef, args, stateRef, expr.location!!.toEntityPosition())
+        }
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.PrevExpr): Expression =
+            OldValue(translateAccess(expr.access).head, expr.location!!.toEntityPosition())
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.PrimitiveLitExpr): Expression =
+            when (val lit = expr.lit) {
+                is org.jetbrains.research.libsl2.ast.BoolLit -> translateLit(lit)
+                is org.jetbrains.research.libsl2.ast.CharLit -> translateLit(lit)
+                is org.jetbrains.research.libsl2.ast.FloatLit -> translateLit(lit)
+                is org.jetbrains.research.libsl2.ast.IntLit -> translateLit(lit)
+                is org.jetbrains.research.libsl2.ast.NullLit -> translateLit(lit)
+                is org.jetbrains.research.libsl2.ast.StringLit -> translateLit(lit)
+            }
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.ProcCallExpr): Expression {
+            val name = when (val callee = expr.callee) {
+                is org.jetbrains.research.libsl2.ast.access.NameAccess -> callee.name.toString()
+                else -> throw CalleeNotNameAccessException(callee.location)
+            }
+
+            val args = expr.args.mapTo(mutableListOf(), ::translateExpr)
+            val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
+            val procCall = ProcedureCall(name, typeArgs, args, expr.location!!.toEntityPosition())
+
+            return ProcExpression(procCall, expr.location!!.toEntityPosition())
+        }
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.TypeCmpExpr): Expression =
+            TypeOperationExpression(
+                "is",
+                translateExpr(expr.lhs),
+                TypeTranslator(ctx).translateTypeExpr(expr.rhs),
+                expr.location!!.toEntityPosition(),
+            )
+
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.UnaryExpr): Expression {
+            val op = when (expr.op) {
+                org.jetbrains.research.libsl2.ast.expr.UnaryExpr.Op.Plus -> ArithmeticUnaryOp.PLUS
+                org.jetbrains.research.libsl2.ast.expr.UnaryExpr.Op.Neg -> ArithmeticUnaryOp.MINUS
+                org.jetbrains.research.libsl2.ast.expr.UnaryExpr.Op.BitNot -> ArithmeticUnaryOp.TILDE
+                org.jetbrains.research.libsl2.ast.expr.UnaryExpr.Op.Not -> ArithmeticUnaryOp.INVERSION
+            }
+
+            return UnaryOpExpression(op, translateExpr(expr.rhs), expr.location!!.toEntityPosition())
+        }
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.BoolLit): Atomic =
+            BoolLiteral(lit.value, lit.location!!.toEntityPosition())
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.CharLit): Atomic {
+            if (lit.value > 0xffff) {
+                throw NonBmpCharException(lit.location)
+            }
+
+            return CharacterLiteral(lit.value.toChar(), lit.location!!.toEntityPosition())
+        }
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.FloatLit): Atomic = when (lit) {
+            is org.jetbrains.research.libsl2.ast.FloatLit.F32 -> FloatLiteral(
+                lit.value,
+                "f",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.FloatLit.F64 -> FloatLiteral(
+                lit.value,
+                null,
+                lit.location!!.toEntityPosition(),
+            )
+        }
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.IntLit): Atomic = when (lit) {
+            is org.jetbrains.research.libsl2.ast.IntLit.I16 -> IntegerLiteral(
+                lit.value,
+                "s",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.I32 -> IntegerLiteral(
+                lit.value,
+                null,
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.I64 -> IntegerLiteral(
+                lit.value,
+                "L",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.I8 -> IntegerLiteral(
+                lit.value,
+                "x",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.U16 -> UnsignedInt16Literal(
+                lit.value,
+                "us",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.U32 -> UnsignedInt32Literal(
+                lit.value,
+                "u",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.U64 -> UnsignedInt64Literal(
+                lit.value,
+                "uL",
+                lit.location!!.toEntityPosition(),
+            )
+
+            is org.jetbrains.research.libsl2.ast.IntLit.U8 -> UnsignedInt8Literal(
+                lit.value,
+                "ux",
+                lit.location!!.toEntityPosition(),
+            )
+        }
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.NullLit): Atomic =
+            NullLiteral("null", lit.location!!.toEntityPosition())
+
+        fun translateLit(lit: org.jetbrains.research.libsl2.ast.StringLit): Atomic =
+            StringLiteral(lit.value, lit.location!!.toEntityPosition())
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.Access): TranslatedAccess = when (access) {
+            is org.jetbrains.research.libsl2.ast.access.FieldAccess -> translateAccess(access)
+            is org.jetbrains.research.libsl2.ast.access.IndexAccess -> translateAccess(access)
+            is org.jetbrains.research.libsl2.ast.access.NameAccess -> translateAccess(access)
+        }
+
+        private fun makeVariableAccess(name: String, location: Location): QualifiedAccess =
+            if (name == "this") {
+                ThisAccess(null, location.toEntityPosition())
+            } else {
+                VariableAccess(
+                    name,
+                    null,
+                    VariableReferenceBuilder.build(name, ctx),
+                    location.toEntityPosition(),
+                )
+            }
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.FieldAccess): TranslatedAccess {
+            val base = translateAccess(access.base)
+            val tail = makeVariableAccess(access.field.name, access.location!!)
+            base.tail.childAccess = tail
+
+            return TranslatedAccess(base.head, tail)
+        }
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.IndexAccess): TranslatedAccess {
+            val base = translateAccess(access.base)
+            val tail = ArrayAccess(translateExpr(access.index), access.location!!.toEntityPosition())
+            base.tail.childAccess = tail
+
+            return TranslatedAccess(base.head, tail)
+        }
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.NameAccess): TranslatedAccess {
+            val access = makeVariableAccess(access.name.toString(), access.location!!)
+
+            return TranslatedAccess(access, access)
         }
     }
 }
