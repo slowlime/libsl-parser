@@ -88,12 +88,25 @@ class UnresolvedReferenceException(
     location: Location?,
     shortMessage: String,
     fullMessage: String,
+    val kind: Kind,
 ) : LocalizedException(location, shortMessage, fullMessage) {
+    enum class Kind {
+        Automaton,
+        TypeParam,
+        State,
+        Annotation,
+        Param,
+        Type,
+        Action,
+        Binding,
+    }
+
     companion object {
         fun toAutomaton(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved automaton reference `$name`",
             "unresolved automaton reference `$name` (${location.inAt()})",
+            Kind.Automaton,
         )
 
         fun toTypeParamInConstraint(name: String, location: Location?): UnresolvedReferenceException =
@@ -101,12 +114,14 @@ class UnresolvedReferenceException(
                 location,
                 "`$name` does not resolve to a type parameter",
                 "`$name` (${location.inAt()}) does not resolve to a type parameter",
+                Kind.TypeParam,
             )
 
         fun toState(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "state `$name` has not been declared",
             "state `$name` (${location.inAt()}) has not been declared in this automaton",
+            Kind.State,
         )
 
         fun toAnnotation(name: String, location: Location?): UnresolvedReferenceException =
@@ -114,30 +129,35 @@ class UnresolvedReferenceException(
                 location,
                 "unresolved annotation reference `$name`",
                 "unresolved annotation reference `$name` (${location.inAt()})",
+                Kind.Annotation,
             )
 
         fun toParam(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved reference to param `$name`",
             "unresolved reference to param `$name` (${location.inAt()})",
+            Kind.Param,
         )
 
         fun toType(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved reference to type `$name`",
             "unresolved reference to type `$name` (${location.inAt()})",
+            Kind.Type,
         )
 
         fun toAction(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved reference to action `$name`",
             "unresolved reference to action `$name` (${location.inAt()})",
+            Kind.Action,
         )
 
         fun toBinding(name: String, location: Location?): UnresolvedReferenceException = UnresolvedReferenceException(
             location,
             "unresolved reference to variable `$name`",
             "unresolved reference to variable `$name` (${location.inAt()})",
+            Kind.Binding,
         )
     }
 }

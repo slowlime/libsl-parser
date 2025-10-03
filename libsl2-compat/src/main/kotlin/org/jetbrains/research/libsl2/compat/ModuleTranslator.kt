@@ -137,13 +137,6 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         return TranslatedLibrary(library, imports)
     }
 
-    fun Location.toEntityPosition(): EntityPosition = EntityPosition(
-        path.toString(),
-        PositionInfo(line, column),
-        // libsl2.ast.Location does not store the end position, since ANTLR does not provide a way to obtain it
-        PositionInfo(line, column),
-    )
-
     private open inner class Translator<C : LslContextBase>(val ctx: C) {
         fun translateAnnotation(annotation: LibSLAnnotation): AnnotationUsage {
             val name = annotation.name.toString()
