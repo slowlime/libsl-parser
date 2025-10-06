@@ -10,7 +10,7 @@ class FSFileLoader(private val basePath: Path) : FileLoader {
         cachedFiles.getOrPut(canonicalPath) { canonicalPath.toFile().readText() }
 
     override fun load(path: String): LoadedFile {
-        val canonicalPath = basePath.resolve(path).normalize()
+        val canonicalPath = basePath.resolve("$path.lsl").normalize()
         val contents = loadByCanonicalPath(canonicalPath)
 
         return LoadedFile(path, CanonicalPath(canonicalPath.toString()), contents)
