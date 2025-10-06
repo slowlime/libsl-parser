@@ -32,7 +32,7 @@ private class Dump : CliktCommand() {
         .help("The path to the LibSL file")
 
     override fun run() {
-        val compat = LibSLCompat(basePath.toString())
+        val compat = LibSLCompat(basePath)
         val lib = compat.loadFromFile(file)
 
         for (error in compat.libsl.errorManager.errors) {

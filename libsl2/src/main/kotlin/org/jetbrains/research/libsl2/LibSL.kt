@@ -31,10 +31,15 @@ class LibSL(private val fileLoader: FileLoader) {
     private val requestsByPath = mutableMapOf<CanonicalPath, ModuleLoadRequest>()
     private val requestQueue = ArrayDeque<ModuleLoadRequest>()
 
-    fun load(path: Path): LoadResult = load(path.toString())
-
     fun load(path: String): LoadResult {
         val request = requestLoad(path, loadChain = null)
+
+        return processLoadRequests(request)
+    }
+
+    fun loadExternal(path: Path): LoadResult {
+        val file = fileLoader.loadExternal(path)
+        val request = requestLoad(file, loadChain = null)
 
         return processLoadRequests(request)
     }

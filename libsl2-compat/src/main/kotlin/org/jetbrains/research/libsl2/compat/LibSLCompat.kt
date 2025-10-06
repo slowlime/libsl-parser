@@ -20,23 +20,23 @@ import java.util.IdentityHashMap
 
 @Suppress("unused")
 class LibSLCompat(
-    private val basePath: String,
-    val globalCtx: LslGlobalContext = LslGlobalContext(File(basePath).name),
+    private val basePath: Path,
+    val globalCtx: LslGlobalContext = LslGlobalContext(basePath.fileName.toString()),
 ) {
-    val libsl = LibSL(basePath, globalCtx)
+    val libsl = LibSL(basePath.toString(), globalCtx)
 
-    private val fileLoader = FSFileLoader(Path.of(basePath))
+    private val fileLoader = FSFileLoader(basePath)
     val libsl2 = org.jetbrains.research.libsl2.LibSL(fileLoader)
 
     private val translatedModules = IdentityHashMap<Module, Library>()
 
-    fun loadFromFile(file: File): Library = handleLoadResult(file.path.toString(), libsl2.load(file.path))
-    fun loadByPath(path: Path): Library = handleLoadResult(path.toString(), libsl2.load(path))
-    fun loadFromPath(path: String): Library = handleLoadResult(path, libsl2.load(path))
-    fun loadFromFileName(name: String): Library = loadFromPath(name)
+    fun loadFromFile(file: File): Library = loadByPath(file.toPath())
+    fun loadByPath(path: Path): Library = handleLoadResult(path.toString(), libsl2.loadExternal(path))
+    fun loadFromPath(path: String): Library = loadByPath(Path.of(path))
+    fun loadFromFileName(name: String): Library = handleLoadResult(name, libsl2.load(name))
 
     fun loadFromString(string: String, fileName: String): Library {
-        val canonicalPath = CanonicalPath(Path.of(basePath).resolve(fileName).normalize().toString())
+        val canonicalPath = CanonicalPath(basePath.resolve(fileName).normalize().toString())
 
         return handleLoadResult(fileName, libsl2.loadFromString(fileName, canonicalPath, string))
     }

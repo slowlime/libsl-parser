@@ -46,6 +46,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
         val lexer = LibSLLexer(stream)
         val tokenStream = CommonTokenStream(lexer)
         val parser = LibSLParser(tokenStream)
+        parser.removeErrorListeners()
         libsl.syntaxErrorListener?.let { parser.addErrorListener(it) }
 
         val errors = mutableListOf<IllegalSyntaxException>()
