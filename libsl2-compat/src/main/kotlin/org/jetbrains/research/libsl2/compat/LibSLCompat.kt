@@ -78,10 +78,10 @@ class LibSLCompat(
             }
 
             is org.jetbrains.research.libsl2.LibSL.LoadResult.Ok -> {
-                val rpo = result.module.getModuleGraphPostOrder().asReversed()
+                val postOrder = result.module.getModuleGraphPostOrder()
                 val newlyTranslated = mutableListOf<ModuleTranslator.TranslatedLibrary>()
 
-                for (module in rpo) {
+                for (module in postOrder) {
                     translatedModules.getOrPut(module) {
                         ModuleTranslator(this, module).translate()
                             .also { newlyTranslated += it }

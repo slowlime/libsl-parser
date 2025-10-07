@@ -22,6 +22,7 @@ import org.jetbrains.research.libsl.nodes.Assignment
 import org.jetbrains.research.libsl.nodes.Atomic
 import org.jetbrains.research.libsl.nodes.Automaton
 import org.jetbrains.research.libsl.nodes.AutomatonConcept
+import org.jetbrains.research.libsl.nodes.AutomatonProcedureCall
 import org.jetbrains.research.libsl.nodes.AutomatonVariableInvoke
 import org.jetbrains.research.libsl.nodes.BinaryOpExpression
 import org.jetbrains.research.libsl.nodes.BoolLiteral
@@ -1414,18 +1415,38 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 is org.jetbrains.research.libsl2.ast.StringLit -> translateLit(lit)
             }
 
-        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.ProcCallExpr): Expression {
-            val name = when (val callee = expr.callee) {
-                is org.jetbrains.research.libsl2.ast.access.NameAccess -> callee.name.toString()
+        fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.ProcCallExpr): Expression =
+            when (val callee = expr.callee) {
+                is org.jetbrains.research.libsl2.ast.access.NameAccess -> {
+                    val name = callee.name.toString()
+                    val args = expr.args.mapTo(mutableListOf(), ::translateExpr)
+                    val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
+                    val procCall = ProcedureCall(name, typeArgs, args, expr.location!!.toEntityPosition())
+
+                    ProcExpression(procCall, expr.location!!.toEntityPosition())
+                }
+
+                is org.jetbrains.research.libsl2.ast.access.AutomatonFieldAccess -> {
+                    val automatonName = callee.name.toString()
+                    val castTypeArgs = TypeTranslator(ctx).translateTypeArgs(callee.typeArgs.orEmpty())
+                    val automatonRef = AutomatonReferenceBuilder.build(automatonName, ctx, castTypeArgs)
+                    val castArg = translateAccess(callee.inner).head
+                    val name = callee.field.toString()
+                    val args = expr.args.mapTo(mutableListOf(), ::translateExpr)
+                    val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
+                    val procCall = ProcedureCall(name, typeArgs, args, expr.location!!.toEntityPosition())
+
+                    AutomatonProcedureCall(
+                        automatonRef,
+                        castArg,
+                        childAccess = null,
+                        procExpression = ProcExpression(procCall, entityPosition = expr.location!!.toEntityPosition()),
+                        entityPosition = expr.location!!.toEntityPosition(),
+                    )
+                }
+
                 else -> throw CalleeNotNameAccessException(callee.location)
             }
-
-            val args = expr.args.mapTo(mutableListOf(), ::translateExpr)
-            val typeArgs = TypeTranslator(ctx).translateTypeArgs(expr.typeArgs.orEmpty())
-            val procCall = ProcedureCall(name, typeArgs, args, expr.location!!.toEntityPosition())
-
-            return ProcExpression(procCall, expr.location!!.toEntityPosition())
-        }
 
         fun translateExpr(expr: org.jetbrains.research.libsl2.ast.expr.TypeCmpExpr): Expression =
             TypeOperationExpression(
