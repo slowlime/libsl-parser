@@ -37,7 +37,8 @@ tasks.generateGrammarSource {
     maxHeapSize = "64m"
     outputDirectory =
         project.layout.buildDirectory.asFile.get().resolve("generated-src/antlr/main/org/jetbrains/research/libsl2")
-    arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages", "-package", "${project.group}.libsl2")
+    arguments = arguments + listOf("-visitor", "-no-listener", "-long-messages")
+    packageName = "${project.group}.libsl2"
 }
 
 val sourcesJar by tasks.registering(Jar::class) {
