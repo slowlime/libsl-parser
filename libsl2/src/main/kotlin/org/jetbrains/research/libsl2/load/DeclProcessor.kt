@@ -176,7 +176,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
     fun process(ctx: LibSLParser.ShiftDeclContext): ShiftDecl = ShiftDecl(
         loader.locationOf(ctx),
         when (val from = ctx.from) {
-            is LibSLParser.ShiftSourceStateShorthandContext -> mutableListOf(loader.processName(from.Identifier()))
+            is LibSLParser.ShiftSourceStateShorthandContext -> mutableListOf(loader.processName(from.ident()))
             is LibSLParser.ShiftSourceStateListContext -> from.states?.names.mapToMutable(loader::processName)
             else -> error("unrecognized shift source state $ctx")
         },

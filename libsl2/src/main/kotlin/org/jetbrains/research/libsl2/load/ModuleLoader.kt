@@ -228,7 +228,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
     private fun processAnnotation(ctx: LibSLParser.AnnotationContext): LibSLAnnotation = LibSLAnnotation(
         locationOf(ctx),
         processName(ctx.name),
-        ctx.args.args.mapToMutable { arg ->
+        ctx.args?.args.mapToMutable { arg ->
             LibSLAnnotation.Arg(
                 arg.name?.let(::processName),
                 processExpr(arg.value),
@@ -236,11 +236,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
         },
     )
 
-    internal fun processName(name: TerminalNode): Name = processName(name.symbol)
-
-    internal fun processName(name: Token): Name {
-        require(name.type == LibSLLexer.Identifier)
-
+    internal fun processName(name: LibSLParser.IdentContext): Name {
         return Name(locationOf(name), name.parseIdent())
     }
 
@@ -461,11 +457,7 @@ internal fun Token.parseStringLit(): String {
         .replace("\\\"", "'")
 }
 
-internal fun Token.parseIdent(): String {
-    require(type == LibSLLexer.Identifier)
-
-    return text.removeSurrounding("`")
-}
+internal fun LibSLParser.IdentContext.parseIdent(): String = text.removeSurrounding("`")
 
 internal fun <T> MutableList<T>?.orEmptyMutable(): MutableList<T> = this ?: mutableListOf()
 
