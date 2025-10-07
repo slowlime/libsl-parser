@@ -1,6 +1,7 @@
 package org.jetbrains.research.libsl2.ast
 
 import org.jetbrains.research.libsl2.ast.access.Access
+import org.jetbrains.research.libsl2.ast.access.AutomatonFieldAccess
 import org.jetbrains.research.libsl2.ast.access.FieldAccess
 import org.jetbrains.research.libsl2.ast.access.IndexAccess
 import org.jetbrains.research.libsl2.ast.access.NameAccess
@@ -261,4 +262,8 @@ abstract class Visitor {
     }
 
     open fun visit(access: NameAccess) {}
+
+    open fun visit(access: AutomatonFieldAccess) {
+        access.walk(this)
+    }
 }

@@ -22,6 +22,7 @@ import org.jetbrains.research.libsl.nodes.Assignment
 import org.jetbrains.research.libsl.nodes.Atomic
 import org.jetbrains.research.libsl.nodes.Automaton
 import org.jetbrains.research.libsl.nodes.AutomatonConcept
+import org.jetbrains.research.libsl.nodes.AutomatonVariableInvoke
 import org.jetbrains.research.libsl.nodes.BinaryOpExpression
 import org.jetbrains.research.libsl.nodes.BoolLiteral
 import org.jetbrains.research.libsl.nodes.CallAutomatonConstructor
@@ -108,6 +109,7 @@ import org.jetbrains.research.libsl.type.Type
 import org.jetbrains.research.libsl.type.TypeAlias
 import org.jetbrains.research.libsl.utils.EntityPosition
 import org.jetbrains.research.libsl.utils.PositionInfo
+import org.jetbrains.research.libsl.visitors.TypeVisitor
 import org.jetbrains.research.libsl2.ast.Header
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
@@ -147,33 +149,33 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
         library.semanticTypesReferences.addAll(
             compat.globalCtx.getAllTypes()
                 .filter { it !is RealType }
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
 
         library.automataReferences.addAll(
             compat.globalCtx.getAllAutomata()
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
 
         library.extensionFunctionsReferences.addAll(
             // yes, *all* functions; this is not a typo (insofar as libsl1's doing the same isn't)
             compat.globalCtx.getAllFunctions()
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
 
         library.globalVariableReferences.addAll(
             compat.globalCtx.getAllVariables()
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
 
         library.annotationReferences.addAll(
             compat.globalCtx.getAllAnnotations()
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
 
         library.declaredActionReferences.addAll(
             compat.globalCtx.getAllDeclaredActions()
-                .map { it.getReference(compat.globalCtx) }
+                .map { it.getReference(compat.globalCtx) },
         )
     }
 
@@ -361,7 +363,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             val annotations = decl.annotations.mapTo(mutableListOf(), ::translateAnnotation)
 
             automaton = if (decl.isConcept) {
-                Automaton(
+                AutomatonConcept(
                     isConcept = false,
                     name,
                     typeRef,
@@ -370,7 +372,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                     entityPosition = decl.location!!.toEntityPosition(),
                 )
             } else {
-                AutomatonConcept(
+                Automaton(
                     isConcept = true,
                     name,
                     typeRef,
@@ -1529,6 +1531,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             is org.jetbrains.research.libsl2.ast.access.FieldAccess -> translateAccess(access)
             is org.jetbrains.research.libsl2.ast.access.IndexAccess -> translateAccess(access)
             is org.jetbrains.research.libsl2.ast.access.NameAccess -> translateAccess(access)
+            is org.jetbrains.research.libsl2.ast.access.AutomatonFieldAccess -> translateAccess(access)
         }
 
         private fun makeVariableAccess(name: String, location: Location): QualifiedAccess =
@@ -1542,6 +1545,24 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                     location.toEntityPosition(),
                 )
             }
+
+        fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.AutomatonFieldAccess): TranslatedAccess {
+            val automatonName = access.name.toString()
+            val typeArgs = TypeTranslator(ctx).translateTypeArgs(access.typeArgs.orEmpty())
+            val automatonRef = AutomatonReferenceBuilder.build(automatonName, ctx, typeArgs)
+            val arg = translateAccess(access.inner).head
+            val tail = makeVariableAccess(access.field.toString(), access.field.location!!)
+
+            return TranslatedAccess(
+                AutomatonVariableInvoke(
+                    automatonRef,
+                    arg,
+                    childAccess = tail,
+                    entityPosition = access.location!!.toEntityPosition(),
+                ),
+                tail,
+            )
+        }
 
         fun translateAccess(access: org.jetbrains.research.libsl2.ast.access.FieldAccess): TranslatedAccess {
             val base = translateAccess(access.base)

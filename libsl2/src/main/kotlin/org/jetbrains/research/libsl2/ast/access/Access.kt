@@ -10,5 +10,6 @@ fun Access.walk(visitor: Visitor) {
         is FieldAccess -> visitor.visit(this)
         is IndexAccess -> visitor.visit(this)
         is NameAccess -> visitor.visit(this)
+        is AutomatonFieldAccess -> visitor.visit(this)
     }
 }

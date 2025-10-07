@@ -9,6 +9,7 @@ import org.jetbrains.research.libsl2.ast.Module
 import org.jetbrains.research.libsl2.ast.Name
 import org.jetbrains.research.libsl2.ast.TypeConstraint
 import org.jetbrains.research.libsl2.ast.Visitor
+import org.jetbrains.research.libsl2.ast.access.AutomatonFieldAccess
 import org.jetbrains.research.libsl2.ast.access.NameAccess
 import org.jetbrains.research.libsl2.ast.decl.ActionDecl
 import org.jetbrains.research.libsl2.ast.decl.AnnotationDecl
@@ -759,6 +760,13 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
         override fun visit(access: NameAccess) {
             access.resolved = currentScope.resolveBinding(access.name.toString())
                 ?: throw UnresolvedReferenceException.toBinding(access.name.toString(), access.name.location)
+        }
+
+        override fun visit(access: AutomatonFieldAccess) {
+            access.resolvedAutomaton = currentScope.resolveAutomaton(access.name.toString())
+                ?: throw UnresolvedReferenceException.toAutomaton(access.name.toString(), access.name.location)
+
+            super.visit(access)
         }
     }
 }

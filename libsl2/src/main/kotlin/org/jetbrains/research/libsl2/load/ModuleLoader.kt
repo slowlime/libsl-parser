@@ -210,6 +210,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.AccessNameContext -> process(ctx)
             is LibSLParser.AccessFieldContext -> process(ctx)
             is LibSLParser.AccessIndexContext -> process(ctx)
+            is LibSLParser.AccessAutomatonFieldContext -> process(ctx)
             else -> error("unrecognized access $ctx")
         }
     }
@@ -348,7 +349,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             "0x" -> 16
             "0b" -> 2
             "0" -> 8
-            else -> 0
+            else -> 10
         }
 
         s = when {
