@@ -77,14 +77,18 @@ import org.jetbrains.research.libsl.nodes.references.TypeReference
 import org.jetbrains.research.libsl.nodes.references.UnionExpressionTypeReference
 import org.jetbrains.research.libsl.nodes.references.WildcardTypeReference
 import org.jetbrains.research.libsl.nodes.references.builders.ActionDeclReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.ActionDeclReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.AnnotationReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.AutomatonStateReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.FunctionReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder
 import org.jetbrains.research.libsl.nodes.references.builders.TypeReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.builders.VariableReferenceBuilder
+import org.jetbrains.research.libsl.nodes.references.builders.VariableReferenceBuilder.getReference
 import org.jetbrains.research.libsl.nodes.references.toSimpleString
 import org.jetbrains.research.libsl.type.ArrayType
 import org.jetbrains.research.libsl.type.BoolType
@@ -134,7 +138,43 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             TopLevelDeclTranslator().translateDecl(decl)
         }
 
+        collectEntities()
+
         return TranslatedLibrary(library, imports)
+    }
+
+    private fun collectEntities() {
+        library.semanticTypesReferences.addAll(
+            compat.globalCtx.getAllTypes()
+                .filter { it !is RealType }
+                .map { it.getReference(compat.globalCtx) }
+        )
+
+        library.automataReferences.addAll(
+            compat.globalCtx.getAllAutomata()
+                .map { it.getReference(compat.globalCtx) }
+        )
+
+        library.extensionFunctionsReferences.addAll(
+            // yes, *all* functions; this is not a typo (insofar as libsl1's doing the same isn't)
+            compat.globalCtx.getAllFunctions()
+                .map { it.getReference(compat.globalCtx) }
+        )
+
+        library.globalVariableReferences.addAll(
+            compat.globalCtx.getAllVariables()
+                .map { it.getReference(compat.globalCtx) }
+        )
+
+        library.annotationReferences.addAll(
+            compat.globalCtx.getAllAnnotations()
+                .map { it.getReference(compat.globalCtx) }
+        )
+
+        library.declaredActionReferences.addAll(
+            compat.globalCtx.getAllDeclaredActions()
+                .map { it.getReference(compat.globalCtx) }
+        )
     }
 
     private open inner class Translator<C : LslContextBase>(val ctx: C) {

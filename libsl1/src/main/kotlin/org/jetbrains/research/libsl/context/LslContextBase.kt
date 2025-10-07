@@ -98,15 +98,15 @@ abstract class LslContextBase(var fileName: String) {
             ?: parentContext?.resolveDeclaredAction(reference)
     }
 
-    internal fun getAllTypes() = types
+    fun getAllTypes(): List<Type> = types
 
-    internal fun getAllAutomata() = automata
+    fun getAllAutomata(): List<Automaton> = automata
 
-    internal fun getAllFunctions() = functions
+    fun getAllFunctions(): List<Function> = functions
 
-    internal fun getAllVariables() = variables
+    fun getAllVariables(): List<Variable> = variables
 
-    internal fun getAllAnnotations() = annotations
+    fun getAllAnnotations(): List<Annotation> = annotations
 
-    internal fun getAllDeclaredActions() = declaredActions
+    fun getAllDeclaredActions(): List<ActionDecl> = declaredActions
 }
