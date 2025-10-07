@@ -22,11 +22,17 @@ class LibSL(private val fileLoader: FileLoader) {
     internal sealed interface ModuleState {
         val file: LoadedFile
 
-        data class InProgress(override val file: LoadedFile, val loadChain: LoadChain) : ModuleState
+        data class InProgress(
+            override val file: LoadedFile,
+            val loadChain: LoadChain,
+        ) : ModuleState {
+            val onLoaded: MutableList<(Module) -> Unit> = mutableListOf()
+        }
+
         data class Loaded(override val file: LoadedFile, val module: Module) : ModuleState
     }
 
-    internal data class ModuleLoadRequest(var state: ModuleState, val onLoaded: (Module) -> Unit)
+    internal data class ModuleLoadRequest(var state: ModuleState)
 
     private val requestsByPath = mutableMapOf<CanonicalPath, ModuleLoadRequest>()
     private val requestQueue = ArrayDeque<ModuleLoadRequest>()
@@ -73,10 +79,19 @@ class LibSL(private val fileLoader: FileLoader) {
     private fun requestLoad(file: LoadedFile, loadChain: LoadChain?, onLoaded: (Module) -> Unit = {}): ModuleLoadRequest {
         val loadChain = loadChain ?: LoadChain.TopLevel(file.path)
 
-        return requestsByPath.getOrPut(file.canonicalPath) {
-            ModuleLoadRequest(ModuleState.InProgress(file, loadChain), onLoaded)
+        val request = requestsByPath.getOrPut(file.canonicalPath) {
+            ModuleLoadRequest(ModuleState.InProgress(file, loadChain))
                 .also { requestQueue += it }
         }
+
+        when (val state = request.state) {
+            is ModuleState.InProgress -> state.onLoaded += onLoaded
+            is ModuleState.Loaded -> {
+                onLoaded(state.module)
+            }
+        }
+
+        return request
     }
 
     private fun processLoadRequests(): LoadResult.Error? {
@@ -91,7 +106,7 @@ class LibSL(private val fileLoader: FileLoader) {
             }
 
             request.state = ModuleState.Loaded(state.file, module)
-            request.onLoaded(module)
+            state.onLoaded.forEach { it(module) }
         }
 
         return null

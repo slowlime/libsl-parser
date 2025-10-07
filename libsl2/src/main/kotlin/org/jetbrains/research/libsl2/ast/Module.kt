@@ -5,6 +5,7 @@ import org.jetbrains.research.libsl2.ast.decl.ImportDecl
 import org.jetbrains.research.libsl2.location.Location
 import org.jetbrains.research.libsl2.location.LocationProvider
 import org.jetbrains.research.libsl2.resolve.scope.ModuleScope
+import java.util.IdentityHashMap
 
 data class Module(
     override var location: Location?,
@@ -26,7 +27,7 @@ data class Module(
         data class Task(val module: Module, var declIdx: Int = 0)
 
         val rpo = mutableListOf<Module>()
-        val discoveredModules = mutableSetOf(this)
+        val discoveredModules = IdentityHashMap<Module, Unit>()
         val taskStack = mutableListOf(Task(this))
 
         dfs@ while (taskStack.isNotEmpty()) {
@@ -36,7 +37,7 @@ data class Module(
             while (task.declIdx < module.decls.size) {
                 val decl = module.decls[task.declIdx++]
 
-                if (decl is ImportDecl && discoveredModules.add(decl.importedModule)) {
+                if (decl is ImportDecl && discoveredModules.put(decl.importedModule, Unit) == null) {
                     taskStack += Task(decl.importedModule)
                     continue@dfs
                 }
