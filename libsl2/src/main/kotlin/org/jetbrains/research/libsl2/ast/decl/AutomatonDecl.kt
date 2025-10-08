@@ -4,8 +4,10 @@ import org.jetbrains.research.libsl2.ast.Annotatable
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Name
 import org.jetbrains.research.libsl2.ast.QualifiedTypeName
+import org.jetbrains.research.libsl2.ast.TypeConstraint
 import org.jetbrains.research.libsl2.ast.Visitor
 import org.jetbrains.research.libsl2.ast.type.TypeExpr
+import org.jetbrains.research.libsl2.ast.walk
 import org.jetbrains.research.libsl2.location.Location
 import org.jetbrains.research.libsl2.resolve.Def
 import org.jetbrains.research.libsl2.resolve.Entity
@@ -19,6 +21,7 @@ data class AutomatonDecl(
     var constructorVariables: MutableList<VariableDecl>,
     var typeExpr: TypeExpr,
     var implementedConcepts: MutableList<Name>,
+    val typeConstraints: MutableList<TypeConstraint>,
     var decls: MutableList<AutomatonMemberDecl>
 ) : GlobalDecl, Annotatable, Entity<AutomatonDecl> {
     override lateinit var primaryDef: Def.Primary<AutomatonDecl>
@@ -35,6 +38,10 @@ fun AutomatonDecl.walk(visitor: Visitor) {
     }
 
     visitor.visit(typeExpr)
+
+    for (typeConstraint in typeConstraints) {
+        typeConstraint.walk(visitor)
+    }
 
     for (decl in decls) {
         visitor.visit(decl)

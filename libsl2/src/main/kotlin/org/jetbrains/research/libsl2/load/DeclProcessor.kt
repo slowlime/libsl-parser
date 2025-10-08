@@ -134,6 +134,7 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         ctx.constructorVariables?.variables.mapToMutable(::processConstructorVariable),
         loader.processTypeExpr(ctx.type),
         ctx.implements_?.concepts.mapToMutable(loader::processName),
+        ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
         ctx.decls.flatMapToMutable(::processAutomatonMemberDecl),
     )
 
