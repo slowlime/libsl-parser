@@ -59,7 +59,7 @@ internal class ExprProcessor(private val loader: ModuleLoader) {
         ctx.args?.args.mapToMutable { arg ->
             when (arg) {
                 is LibSLParser.ConstructorArgStateContext -> InstantiationExpr.Arg.State(
-                    loader.processAtomicExpr(arg.value),
+                    loader.processName(arg.state),
                 )
 
                 is LibSLParser.ConstructorArgVarContext -> InstantiationExpr.Arg.Var(

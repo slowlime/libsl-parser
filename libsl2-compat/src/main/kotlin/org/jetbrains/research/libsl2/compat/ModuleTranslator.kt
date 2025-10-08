@@ -108,9 +108,6 @@ import org.jetbrains.research.libsl.type.StringType
 import org.jetbrains.research.libsl.type.StructuredType
 import org.jetbrains.research.libsl.type.Type
 import org.jetbrains.research.libsl.type.TypeAlias
-import org.jetbrains.research.libsl.utils.EntityPosition
-import org.jetbrains.research.libsl.utils.PositionInfo
-import org.jetbrains.research.libsl.visitors.TypeVisitor
 import org.jetbrains.research.libsl2.ast.Header
 import org.jetbrains.research.libsl2.ast.LibSLAnnotation
 import org.jetbrains.research.libsl2.ast.Module
@@ -1391,9 +1388,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
             val stateName = expr.args
                 .firstNotNullOfOrNull { it as? org.jetbrains.research.libsl2.ast.expr.InstantiationExpr.Arg.State }
-                ?.let { it.value as? org.jetbrains.research.libsl2.ast.expr.AccessExpr }
-                ?.let { it.access as? org.jetbrains.research.libsl2.ast.access.NameAccess }
-                ?.name
+                ?.state
                 ?.toString()
             check(stateName != null)
 

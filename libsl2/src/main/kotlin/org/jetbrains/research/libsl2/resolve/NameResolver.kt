@@ -742,6 +742,13 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
             expr.resolved = currentScope.resolveAutomaton(expr.name.toString())
                 ?: throw UnresolvedReferenceException.toAutomaton(expr.name.toString(), expr.name.location)
 
+            for (arg in expr.args) {
+                if (arg is InstantiationExpr.Arg.State) {
+                    arg.resolved = expr.resolved.entity.scope.resolveState(arg.state.toString())
+                        ?: throw UnresolvedReferenceException.toState(arg.state.toString(), arg.state.location)
+                }
+            }
+
             super.visit(expr)
         }
 
