@@ -12,6 +12,7 @@ import org.jetbrains.research.libsl2.ast.expr.InstantiationExpr
 import org.jetbrains.research.libsl2.ast.expr.PrevExpr
 import org.jetbrains.research.libsl2.ast.expr.PrimitiveLitExpr
 import org.jetbrains.research.libsl2.ast.expr.ProcCallExpr
+import org.jetbrains.research.libsl2.ast.expr.SetLitExpr
 import org.jetbrains.research.libsl2.ast.expr.TypeCmpExpr
 import org.jetbrains.research.libsl2.ast.expr.UnaryExpr
 
@@ -29,6 +30,11 @@ internal class ExprProcessor(private val loader: ModuleLoader) {
     )
 
     fun process(ctx: LibSLParser.ArrayLitExprContext): ArrayLitExpr = ArrayLitExpr(
+        loader.locationOf(ctx),
+        ctx.elems?.exprs.mapToMutable(loader::processExpr),
+    )
+
+    fun process(ctx: LibSLParser.SetLitExprContext): SetLitExpr = SetLitExpr(
         loader.locationOf(ctx),
         ctx.elems?.exprs.mapToMutable(loader::processExpr),
     )
@@ -217,6 +223,7 @@ internal class ExprProcessor(private val loader: ModuleLoader) {
             is LibSLParser.BinOpGreaterContext -> BinaryExpr.Op.Gt
             is LibSLParser.BinOpEqualsContext -> BinaryExpr.Op.Eq
             is LibSLParser.BinOpNotEqualsContext -> BinaryExpr.Op.Ne
+            is LibSLParser.BinOpInContext -> BinaryExpr.Op.In
             else -> error("unrecognized relational binary op $ctx")
         },
         loader.processExpr(ctx.rhs),

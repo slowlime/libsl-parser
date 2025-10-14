@@ -9,13 +9,13 @@ internal class ContractProcessor(private val loader: ModuleLoader) {
     fun process(ctx: LibSLParser.RequiresContractContext): RequiresContract = RequiresContract(
         loader.locationOf(ctx),
         ctx.name?.let(loader::processName),
-        loader.processExpr(ctx.spec),
+        loader.processPredicate(ctx.spec),
     )
 
     fun process(ctx: LibSLParser.EnsuresContractContext): EnsuresContract = EnsuresContract(
         loader.locationOf(ctx),
         ctx.name?.let(loader::processName),
-        loader.processExpr(ctx.spec),
+        loader.processPredicate(ctx.spec),
     )
 
     fun process(ctx: LibSLParser.AssignsContractContext): AssignsContract = AssignsContract(

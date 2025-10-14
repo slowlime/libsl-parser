@@ -138,19 +138,30 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         ctx.decls.flatMapToMutable(::processAutomatonMemberDecl),
     )
 
-    fun process(ctx: LibSLParser.FunctionDeclContext): FunctionDecl = FunctionDecl(
-        loader.locationOf(ctx),
-        loader.processAnnotations(ctx.annotations),
-        ctx.static_ != null,
-        ctx.extensionFor?.let(loader::processFullName),
-        ctx.method != null,
-        loader.processName(ctx.name),
-        ctx.typeParams?.let(loader::processGenerics).orEmptyMutable(),
-        ctx.params?.params.mapToMutable(::processFunctionParam),
-        ctx.retType?.let(loader::processTypeExpr),
-        ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
-        ctx.def?.let(::processFunctionDef),
-    )
+    fun process(ctx: LibSLParser.FunctionDeclContext): FunctionDecl {
+        val decl = FunctionDecl(
+            loader.locationOf(ctx),
+            loader.processAnnotations(ctx.annotations),
+            isStatic = false,
+            ctx.extensionFor?.let(loader::processFullName),
+            ctx.method != null,
+            loader.processName(ctx.name),
+            ctx.typeParams?.let(loader::processGenerics).orEmptyMutable(),
+            ctx.params?.params.mapToMutable(::processFunctionParam),
+            ctx.retType?.let(loader::processTypeExpr),
+            ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
+            ctx.def?.let(::processFunctionDef),
+        )
+
+        for (modifier in ctx.modifiers) {
+            when (modifier) {
+                is LibSLParser.FunctionModifierStaticContext -> decl.isStatic = true
+                else -> error("unrecognized function modifier: $ctx")
+            }
+        }
+
+        return decl
+    }
 
     fun process(ctx: LibSLParser.VariableDeclContext): VariableDecl = VariableDecl(
         loader.locationOf(ctx),
@@ -209,17 +220,29 @@ internal class DeclProcessor(private val loader: ModuleLoader) {
         ctx.def?.let(::processFunctionDef),
     )
 
-    fun process(ctx: LibSLParser.ProcDeclContext): ProcDecl = ProcDecl(
-        loader.locationOf(ctx),
-        loader.processAnnotations(ctx.annotations),
-        ctx.method != null,
-        loader.processName(ctx.name),
-        ctx.typeParams?.let(loader::processGenerics).orEmptyMutable(),
-        ctx.params?.params.mapToMutable(::processFunctionParam),
-        ctx.retType?.let(loader::processTypeExpr),
-        ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
-        ctx.def?.let(::processFunctionDef),
-    )
+    fun process(ctx: LibSLParser.ProcDeclContext): ProcDecl {
+        val decl = ProcDecl(
+            loader.locationOf(ctx),
+            loader.processAnnotations(ctx.annotations),
+            isPure = false,
+            ctx.method != null,
+            loader.processName(ctx.name),
+            ctx.typeParams?.let(loader::processGenerics).orEmptyMutable(),
+            ctx.params?.params.mapToMutable(::processFunctionParam),
+            ctx.retType?.let(loader::processTypeExpr),
+            ctx.typeConstraints?.let(loader::processWhereClause).orEmptyMutable(),
+            ctx.def?.let(::processFunctionDef),
+        )
+
+        for (modifier in ctx.modifiers) {
+            when (modifier) {
+                is LibSLParser.ProcModifierPureContext -> decl.isPure = true
+                else -> error("unrecognized proc modifier: $ctx")
+            }
+        }
+
+        return decl
+    }
 
     private fun processStructMemberDecl(ctx: LibSLParser.StructDefDeclContext): StructMemberDecl = when (ctx) {
         is LibSLParser.StructDefDeclFunctionContext -> process(ctx.functionDecl())

@@ -18,6 +18,7 @@ import org.jetbrains.research.libsl2.resolve.scope.MutableScope
 data class ProcDecl(
     override var location: Location?,
     override var annotations: MutableList<LibSLAnnotation>,
+    var isPure: Boolean,
     var isMethod: Boolean,
     override var name: Name,
     var generics: MutableList<Generic>,
@@ -25,7 +26,7 @@ data class ProcDecl(
     override var returnType: TypeExpr?,
     var typeConstraints: MutableList<TypeConstraint>,
     override var body: FunctionBody?,
-) : FunctionLikeDecl, AutomatonMemberDecl, Entity<FunctionLikeDecl> {
+) : FunctionLikeDecl, GlobalDecl, AutomatonMemberDecl, Entity<FunctionLikeDecl> {
     override lateinit var primaryDef: Def.Primary<FunctionLikeDecl>
     lateinit var paramScope: MutableScope
 }

@@ -12,3 +12,5 @@
 /.gradle/
 /.idea/codeStyles/
 /.idea/kotlinc.xml
+
+/libsl*/src/main/antlr/*.tokens

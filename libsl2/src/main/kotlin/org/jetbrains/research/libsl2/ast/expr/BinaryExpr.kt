@@ -28,6 +28,7 @@ data class BinaryExpr(
         Ge,
         Eq,
         Ne,
+        In,
         Or,
         And,
     }

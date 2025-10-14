@@ -7,7 +7,6 @@ import org.antlr.v4.runtime.ParserRuleContext
 import org.antlr.v4.runtime.RecognitionException
 import org.antlr.v4.runtime.Recognizer
 import org.antlr.v4.runtime.Token
-import org.antlr.v4.runtime.tree.TerminalNode
 import org.jetbrains.research.libsl2.LibSL
 import org.jetbrains.research.libsl2.LibSLLexer
 import org.jetbrains.research.libsl2.LibSLParser
@@ -32,6 +31,7 @@ import org.jetbrains.research.libsl2.ast.contract.Contract
 import org.jetbrains.research.libsl2.ast.decl.GlobalDecl
 import org.jetbrains.research.libsl2.ast.decl.VariableDecl
 import org.jetbrains.research.libsl2.ast.expr.Expr
+import org.jetbrains.research.libsl2.ast.predicate.Predicate
 import org.jetbrains.research.libsl2.ast.stmt.Stmt
 import org.jetbrains.research.libsl2.ast.type.TypeArg
 import org.jetbrains.research.libsl2.ast.type.TypeExpr
@@ -129,6 +129,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.GlobalDeclActionContext -> listOf(process(ctx.actionDecl()))
             is LibSLParser.GlobalDeclAutomatonContext -> listOf(process(ctx.automatonDecl()))
             is LibSLParser.GlobalDeclFunctionContext -> listOf(process(ctx.functionDecl()))
+            is LibSLParser.GlobalDeclProcContext -> listOf(process(ctx.procDecl()))
             is LibSLParser.GlobalDeclVariableContext -> listOf(process(ctx.variableDecl()))
             else -> error("unrecognized global decl $ctx")
         }
@@ -173,6 +174,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.AtomicExprPrimitiveLitContext -> process(ctx)
             is LibSLParser.AtomicExprSignedNumLitContext -> process(ctx)
             is LibSLParser.AtomicExprArrayLitContext -> process(ctx.arrayLitExpr())
+            is LibSLParser.AtomicExprSetLitContext -> process(ctx.setLitExpr())
             is LibSLParser.AtomicExprAccessContext -> process(ctx)
             else -> error("unrecognized atomic expr $ctx")
         }
@@ -183,6 +185,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.ExprParenContext -> processExpr(ctx.inner)
             is LibSLParser.ExprPrimitiveLitContext -> process(ctx)
             is LibSLParser.ExprArrayLitContext -> process(ctx.arrayLitExpr())
+            is LibSLParser.ExprSetLitContext -> process(ctx.setLitExpr())
             is LibSLParser.ExprPrevContext -> process(ctx)
             is LibSLParser.ExprProcCallContext -> process(ctx.procCallExpr())
             is LibSLParser.ExprActionCallContext -> process(ctx.actionCallExpr())
@@ -212,6 +215,34 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.AccessIndexContext -> process(ctx)
             is LibSLParser.AccessAutomatonFieldContext -> process(ctx)
             else -> error("unrecognized access $ctx")
+        }
+    }
+
+    internal fun processPredicate(ctx: LibSLParser.PredicateContext): Predicate = PredicateProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.PredicateBlockContext -> process(ctx.blockPredicate())
+            is LibSLParser.PredicateNamedContext -> process(ctx)
+            is LibSLParser.PredicateVariableDeclContext -> process(ctx)
+            is LibSLParser.PredicateIfContext -> process(ctx.ifPredicate())
+            is LibSLParser.PredicateExprContext -> process(ctx)
+            else -> error("unrecognized predicate $ctx")
+        }
+    }
+
+    internal fun processPredicate(ctx: LibSLParser.ContractPredicateContext): Predicate = PredicateProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.ContractPredicateBlockContext -> process(ctx.blockPredicate())
+            is LibSLParser.ContractPredicateIfContext -> process(ctx.ifPredicate())
+            is LibSLParser.ContractPredicateExprContext -> process(ctx)
+            else -> error("unrecognized predicate $ctx")
+        }
+    }
+
+    internal fun processPredicate(ctx: LibSLParser.ExprPredicateContext): Predicate = PredicateProcessor(this).run {
+        when (ctx) {
+            is LibSLParser.ExprPredicateBlockContext -> process(ctx.blockPredicate())
+            is LibSLParser.ExprPredicateExprContext -> process(ctx)
+            else -> error("unrecognized predicate $ctx")
         }
     }
 
