@@ -255,6 +255,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 is org.jetbrains.research.libsl2.ast.decl.AutomatonDecl -> translateAutomatonDecl(decl)
                 is org.jetbrains.research.libsl2.ast.decl.EnumDecl -> translateEnumDecl(decl)
                 is org.jetbrains.research.libsl2.ast.decl.FunctionDecl -> translateFunctionDecl(decl)
+                is org.jetbrains.research.libsl2.ast.decl.ProcDecl -> throw GlobalProcDeclException(decl.location)
                 is org.jetbrains.research.libsl2.ast.decl.ImportDecl -> translateImportDecl(decl)
                 is org.jetbrains.research.libsl2.ast.decl.IncludeDecl -> translateIncludeDecl(decl)
                 is org.jetbrains.research.libsl2.ast.decl.SemanticTypeDecl.Enumerated -> translateSemanticTypeDecl(decl)
@@ -682,7 +683,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             function.contracts.add(
                 Contract(
                     contract.name?.toString(),
-                    ExprTranslator(ctx).translateExpr(contract.expr),
+                    ExprTranslator(ctx).translatePredicate(contract.predicate),
                     ContractKind.ENSURES,
                     contract.location!!.toEntityPosition(),
                 ),
@@ -693,7 +694,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             function.contracts.add(
                 Contract(
                     contract.name?.toString(),
-                    ExprTranslator(ctx).translateExpr(contract.expr),
+                    ExprTranslator(ctx).translatePredicate(contract.predicate),
                     ContractKind.REQUIRES,
                     contract.location!!.toEntityPosition(),
                 ),
@@ -1285,6 +1286,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
             is org.jetbrains.research.libsl2.ast.expr.AccessExpr -> translateExpr(expr)
             is org.jetbrains.research.libsl2.ast.expr.ActionCallExpr -> translateExpr(expr)
             is org.jetbrains.research.libsl2.ast.expr.ArrayLitExpr -> translateExpr(expr)
+            is org.jetbrains.research.libsl2.ast.expr.SetLitExpr -> throw SetLitExprException(expr.location)
             is org.jetbrains.research.libsl2.ast.expr.BinaryExpr -> translateExpr(expr)
             is org.jetbrains.research.libsl2.ast.expr.CastExpr -> translateExpr(expr)
             is org.jetbrains.research.libsl2.ast.expr.HasConceptExpr -> translateExpr(expr)
@@ -1344,6 +1346,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
                 org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Ge -> ArithmeticBinaryOps.GT_EQ
                 org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Eq -> ArithmeticBinaryOps.EQ
                 org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Ne -> ArithmeticBinaryOps.NOT_EQ
+                org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.In -> throw InExprException(expr.location)
                 org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.Or -> ArithmeticBinaryOps.LOG_OR
                 org.jetbrains.research.libsl2.ast.expr.BinaryExpr.Op.And -> ArithmeticBinaryOps.LOG_AND
             }
@@ -1601,5 +1604,11 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
             return TranslatedAccess(access, access)
         }
+
+        fun translatePredicate(predicate: org.jetbrains.research.libsl2.ast.predicate.Predicate): Expression =
+            when (predicate) {
+                is org.jetbrains.research.libsl2.ast.predicate.ExprPredicate -> translateExpr(predicate.expr)
+                else -> throw ComplexPredicateException(predicate.location)
+            }
     }
 }

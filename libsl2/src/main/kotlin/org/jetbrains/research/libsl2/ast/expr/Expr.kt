@@ -10,6 +10,7 @@ fun Expr.walk(visitor: Visitor) {
         is AccessExpr -> visitor.visit(this)
         is ActionCallExpr -> visitor.visit(this)
         is ArrayLitExpr -> visitor.visit(this)
+        is SetLitExpr -> visitor.visit(this)
         is BinaryExpr -> visitor.visit(this)
         is CastExpr -> visitor.visit(this)
         is HasConceptExpr -> visitor.visit(this)

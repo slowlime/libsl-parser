@@ -28,3 +28,23 @@ class CalleeNotNameAccessException(location: Location?) : TranslationException(
     "the callee must be a plain-name access expression (${location.inAt()})",
     location,
 )
+
+class GlobalProcDeclException(location: Location?) : TranslationException(
+    "libsl1 does not support proc declaration at the top level (${location.inAt()})",
+    location,
+)
+
+class ComplexPredicateException(location: Location?) : TranslationException(
+    "libsl1 does not support non-expression predicates (${location.inAt()})",
+    location,
+)
+
+class SetLitExprException(location: Location?) : TranslationException(
+    "libsl1 does not support set literal expressions (${location.inAt()})",
+    location,
+)
+
+class InExprException(location: Location?) : TranslationException(
+    "libsl1 does not support `in`-expressions (${location.inAt()})",
+    location,
+)

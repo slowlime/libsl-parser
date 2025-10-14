@@ -40,9 +40,17 @@ import org.jetbrains.research.libsl2.ast.expr.InstantiationExpr
 import org.jetbrains.research.libsl2.ast.expr.PrevExpr
 import org.jetbrains.research.libsl2.ast.expr.PrimitiveLitExpr
 import org.jetbrains.research.libsl2.ast.expr.ProcCallExpr
+import org.jetbrains.research.libsl2.ast.expr.SetLitExpr
 import org.jetbrains.research.libsl2.ast.expr.TypeCmpExpr
 import org.jetbrains.research.libsl2.ast.expr.UnaryExpr
 import org.jetbrains.research.libsl2.ast.expr.walk
+import org.jetbrains.research.libsl2.ast.predicate.BlockPredicate
+import org.jetbrains.research.libsl2.ast.predicate.ExprPredicate
+import org.jetbrains.research.libsl2.ast.predicate.IfPredicate
+import org.jetbrains.research.libsl2.ast.predicate.NamedPredicate
+import org.jetbrains.research.libsl2.ast.predicate.Predicate
+import org.jetbrains.research.libsl2.ast.predicate.VariableDeclPredicate
+import org.jetbrains.research.libsl2.ast.predicate.walk
 import org.jetbrains.research.libsl2.ast.stmt.AssignStmt
 import org.jetbrains.research.libsl2.ast.stmt.ExprStmt
 import org.jetbrains.research.libsl2.ast.stmt.IfStmt
@@ -179,6 +187,30 @@ abstract class Visitor {
         contract.walk(this)
     }
 
+    open fun visit(predicate: Predicate) {
+        predicate.walk(this)
+    }
+
+    open fun visit(predicate: BlockPredicate) {
+        predicate.walk(this)
+    }
+
+    open fun visit(predicate: ExprPredicate) {
+        predicate.walk(this)
+    }
+
+    open fun visit(predicate: IfPredicate) {
+        predicate.walk(this)
+    }
+
+    open fun visit(predicate: NamedPredicate) {
+        predicate.walk(this)
+    }
+
+    open fun visit(predicate: VariableDeclPredicate) {
+        predicate.walk(this)
+    }
+
     open fun visit(stmt: Stmt) {
         stmt.walk(this)
     }
@@ -212,6 +244,10 @@ abstract class Visitor {
     }
 
     open fun visit(expr: ArrayLitExpr) {
+        expr.walk(this)
+    }
+
+    open fun visit(expr: SetLitExpr) {
         expr.walk(this)
     }
 

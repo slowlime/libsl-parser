@@ -130,6 +130,11 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
                             module.scope.define(decl.name.toString(), decl.location, decl).orThrow(decl.name)
                     }
 
+                    is ProcDecl -> {
+                        decl.primaryDef =
+                            module.scope.define(decl.name.toString(), decl.location, decl).orThrow(decl.name)
+                    }
+
                     is ImportDecl -> {
                         module.imports += decl
                         decl.importedModule.importedBy += Pair(module, decl)
