@@ -6,6 +6,7 @@ import org.jetbrains.research.libsl2.ast.decl.AnnotationDecl
 import org.jetbrains.research.libsl2.ast.decl.AutomatonDecl
 import org.jetbrains.research.libsl2.ast.decl.FunctionLikeDecl
 import org.jetbrains.research.libsl2.ast.decl.StateDecl
+import org.jetbrains.research.libsl2.ast.predicate.Predicate
 import org.jetbrains.research.libsl2.location.Location
 import org.jetbrains.research.libsl2.resolve.Binding
 import org.jetbrains.research.libsl2.resolve.Def

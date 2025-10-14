@@ -30,6 +30,9 @@ import org.jetbrains.research.libsl2.ast.decl.VariableDecl
 import org.jetbrains.research.libsl2.ast.expr.ActionCallExpr
 import org.jetbrains.research.libsl2.ast.expr.InstantiationExpr
 import org.jetbrains.research.libsl2.ast.expr.ProcCallExpr
+import org.jetbrains.research.libsl2.ast.predicate.BlockPredicate
+import org.jetbrains.research.libsl2.ast.predicate.IfPredicate
+import org.jetbrains.research.libsl2.ast.predicate.NamedPredicate
 import org.jetbrains.research.libsl2.ast.stmt.IfStmt
 import org.jetbrains.research.libsl2.ast.type.NameTypeExpr
 import org.jetbrains.research.libsl2.ast.walk
@@ -755,6 +758,32 @@ internal class NameResolver(private val libsl: LibSL, private val rootModule: Mo
             }
 
             super.visit(expr)
+        }
+
+        override fun visit(predicate: BlockPredicate) {
+            predicate.scope = enter(MutableScope(currentScope)) {
+                super.visit(predicate)
+            }
+        }
+
+        override fun visit(predicate: NamedPredicate) {
+            predicate.primaryDef = currentScope
+                .define(predicate.name.toString(), predicate.name.location, Binding.of(predicate))
+                .orThrow(predicate.name)
+
+            super.visit(predicate)
+        }
+
+        override fun visit(predicate: IfPredicate) {
+            visit(predicate.condition)
+
+            predicate.thenScope = enter(MutableScope(currentScope)) {
+                visit(predicate.thenBranch)
+            }
+
+            predicate.elseScope = enter(MutableScope(currentScope)) {
+                predicate.elseBranch?.let(::visit)
+            }
         }
 
         override fun visit(expr: ProcCallExpr) {
