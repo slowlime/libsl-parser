@@ -52,6 +52,7 @@ import org.jetbrains.research.libsl2.ast.predicate.Predicate
 import org.jetbrains.research.libsl2.ast.predicate.VariableDeclPredicate
 import org.jetbrains.research.libsl2.ast.predicate.walk
 import org.jetbrains.research.libsl2.ast.stmt.AssignStmt
+import org.jetbrains.research.libsl2.ast.stmt.CancelStmt
 import org.jetbrains.research.libsl2.ast.stmt.ExprStmt
 import org.jetbrains.research.libsl2.ast.stmt.IfStmt
 import org.jetbrains.research.libsl2.ast.stmt.Stmt
@@ -218,6 +219,8 @@ abstract class Visitor {
     open fun visit(stmt: AssignStmt) {
         stmt.walk(this)
     }
+
+    open fun visit(stmt: CancelStmt) {}
 
     open fun visit(stmt: ExprStmt) {
         stmt.walk(this)

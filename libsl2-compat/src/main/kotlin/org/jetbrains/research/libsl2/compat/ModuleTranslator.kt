@@ -711,6 +711,7 @@ internal class ModuleTranslator(private val compat: LibSLCompat, private val mod
 
             when (stmt) {
                 is org.jetbrains.research.libsl2.ast.stmt.AssignStmt -> translateStmt(stmt, statements)
+                is org.jetbrains.research.libsl2.ast.stmt.CancelStmt -> throw CancelStmtException(stmt.location)
                 is org.jetbrains.research.libsl2.ast.stmt.ExprStmt -> translateStmt(stmt, statements)
                 is org.jetbrains.research.libsl2.ast.stmt.IfStmt -> translateStmt(stmt, statements)
                 is org.jetbrains.research.libsl2.ast.stmt.VariableDeclStmt -> translateStmt(stmt, statements)

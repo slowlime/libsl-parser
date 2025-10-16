@@ -48,3 +48,8 @@ class InExprException(location: Location?) : TranslationException(
     "libsl1 does not support `in`-expressions (${location.inAt()})",
     location,
 )
+
+class CancelStmtException(location: Location?) : TranslationException(
+    "libsl1 does not support `cancel` statements (${location.inAt()})",
+    location,
+)

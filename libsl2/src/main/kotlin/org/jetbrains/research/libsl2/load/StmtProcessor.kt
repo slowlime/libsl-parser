@@ -2,6 +2,7 @@ package org.jetbrains.research.libsl2.load
 
 import org.jetbrains.research.libsl2.LibSLParser
 import org.jetbrains.research.libsl2.ast.stmt.AssignStmt
+import org.jetbrains.research.libsl2.ast.stmt.CancelStmt
 import org.jetbrains.research.libsl2.ast.stmt.ExprStmt
 import org.jetbrains.research.libsl2.ast.stmt.IfStmt
 import org.jetbrains.research.libsl2.ast.stmt.Stmt
@@ -38,6 +39,8 @@ internal class StmtProcessor(private val loader: ModuleLoader) {
         },
         loader.processExpr(ctx.rhs),
     )
+
+    fun process(ctx: LibSLParser.CancelStmtContext): CancelStmt = CancelStmt(loader.locationOf(ctx))
 
     fun process(ctx: LibSLParser.StmtExprContext): ExprStmt = ExprStmt(
         loader.locationOf(ctx),

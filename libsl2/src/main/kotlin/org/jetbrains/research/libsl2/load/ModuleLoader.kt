@@ -163,6 +163,7 @@ internal class ModuleLoader(val libsl: LibSL, val file: LoadedFile, val loadChai
             is LibSLParser.StmtVariableDeclContext -> process(ctx)
             is LibSLParser.StmtIfContext -> process(ctx.ifStmt())
             is LibSLParser.StmtAssignContext -> process(ctx.assignStmt())
+            is LibSLParser.StmtCancelContext -> process(ctx.cancelStmt())
             is LibSLParser.StmtExprContext -> process(ctx)
             else -> error("unrecognized stmt $ctx")
         }
