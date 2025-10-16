@@ -25,7 +25,7 @@ internal class PredicateProcessor(private val loader: ModuleLoader) {
 
     fun process(ctx: LibSLParser.IfPredicateContext): IfPredicate = IfPredicate(
         loader.locationOf(ctx),
-        loader.processPredicate(ctx.condition),
+        loader.processExpr(ctx.condition),
         loader.processPredicate(ctx.thenBranch),
         ctx.elseBranch?.let(loader::processPredicate),
     )
